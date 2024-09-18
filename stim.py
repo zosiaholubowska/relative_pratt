@@ -63,15 +63,16 @@ for key, value in trans_dict.items():
 notes = []
 for i in range(len(stims_trans)):
     list_notes = stims_trans[i]['note'].to_list()
-    for l in list_notes:
-        notes.append(l)
+    first = list_notes[0]
+    second_last = list_notes[-2]
+    last = list_notes[-1]
+    notes.append(first)
+    notes.append(second_last)
+    notes.append(last)
 
-min_value = int(min(notes))
-max_value = int(max(notes))
+unique = list(set(notes))
 
-range_notes = list(range(min_value, max_value))
-
-range_freq = [notetofreq(f) for f in range_notes]
+range_freq = [notetofreq(f) for f in unique]
 
 with open(f'{STIM_DIR}/freqs.pickle', 'wb') as fp:
     pickle.dump(range_freq, fp)
