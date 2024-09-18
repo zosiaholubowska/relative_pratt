@@ -1,6 +1,7 @@
 import os
 from mido import MidiFile
 import pandas
+import random
 
 # ====== DIRS AND PARAMS
 
@@ -62,3 +63,19 @@ def separate_melodies(df, interval=8):
         split_dfs.append(subset)
 
     return split_dfs
+
+def shuffle_pairs(pairs):
+    random.shuffle(pairs)
+    valid_order = False
+
+    while not valid_order:
+        valid_order = True
+        for i in range(1, len(pairs)):
+            if pairs[i][0] == pairs[i-1][0]:
+                random.shuffle(pairs)
+                valid_order = False
+
+                break
+    return pairs
+
+
