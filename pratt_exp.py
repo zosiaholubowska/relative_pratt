@@ -67,8 +67,17 @@ def run_abs(subject, range_freq):
         time.sleep(1)
 
 
+### ========== INDUCED CONTEXT
 
+# ========== STIMULI
 
+files = [f for f in os.listdir(STIM_DIR) if 'stim_' in f]
+random.shuffle(files)
 
-# ========== INDUCED CONTEXT
+pairs = [(sound, speaker) for sound in files for speaker in directions]
+stims = shuffle_pairs(pairs)
 
+for stim in stims:
+    file_name = stim[0]
+    stim_params = pandas.read_csv(f'{STIM_DIR}/{file_name}')
+    times = stim_params['onset_sec'].tolist()
