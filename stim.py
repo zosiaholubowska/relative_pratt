@@ -73,5 +73,5 @@ range_notes = list(range(min_value, max_value))
 
 range_freq = [notetofreq(f) for f in range_notes]
 
-with open(f'{STIM_DIR}/freqs', 'wb') as fp:
+with open(f'{STIM_DIR}/freqs.pickle', 'wb') as fp:
     pickle.dump(range_freq, fp)
