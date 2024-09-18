@@ -28,7 +28,7 @@ proc_list = [['RX81', 'RX8', f'{DIR}/rcx/piano.rcx'],
                 ['RX82', 'RX8', f'{DIR}/rcx/piano.rcx'],
                  ['RP2', 'RP2', f'{DIR}/rcx/button.rcx']]
 
-freefield.initialize('dome', device=proc_list)
+freefield.initialize('dome', device=proc_list, sensor_tracking=True)
 freefield.set_logger('warning')
 
 
@@ -53,12 +53,17 @@ def run_abs(subject, range_freq):
         freefield.write('chan', curr_speaker.analog_channel, curr_speaker.analog_proc)
         [other_proc] = [item for item in [proc_list[0][0], proc_list[1][0]] if item != curr_speaker.analog_proc]
         freefield.write('chan', 99, other_proc)
-        time.sleep(8)
+        freefield.calibrate_sensor(led_feedback=True, button_response=True) #calibration
         freefield.play()
+        time.sleep(duration)
+        response = 0
+        while not response:
+            pose = freefield.get_head_pose(method = 'sensor')
 
         # TO DO - add head position log
         # light shows up on the middle speaker
-        freefield.write(tag='bitmask', value=1, processors='RX81')
+        #freefield.write(tag='bitmask', value=1, processors='RX81') #check the value of the loudspeaker
+
         # laser pointing at the loudspeaker which produces the sound
 
         #button press to log the response
