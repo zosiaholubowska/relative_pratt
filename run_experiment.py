@@ -23,7 +23,7 @@ proc_list, directions = load_processors(DIR)
 step, tone, stims = load_stimuli_absolute(STIM_DIR, subject)
 
 ### RUN *EXPERIMENT - PART 1* - absolute measures
-run_abs(subject, stims, samplerate, proc_list, table, step)
+run_abs(subject, stims, proc_list, table, step)
 
 ### LOAD STIMULI - RELATIVE MEASURES
 

@@ -19,15 +19,13 @@ def load_parameters(subject):
 
     return DIR, STIM_DIR, samplerate, table
 
-### ========== ABSOLUTE MEASURES
-
 # =========== SET-UP
 def load_processors(DIR):
     proc_list = [['RX81', 'RX8', f'{DIR}/rcx/piano.rcx'],
                 ['RX82', 'RX8', f'{DIR}/rcx/piano.rcx'],
                  ['RP2', 'RP2', f'{DIR}/rcx/button.rcx']]
 
-    freefield.initialize('dome', device=proc_list, sensor_tracking=True)
+    freefield.initialize('dome', device=proc_list, sensor_tracking=True) #
     freefield.set_logger('warning')
     directions = [21, 22, 23, 24, 25]
 
@@ -35,18 +33,16 @@ def load_processors(DIR):
 
 # ========== STIMULI
 def load_stimuli_absolute(STIM_DIR, subject):
-    step = 84
+    step = 69
     file_name = f'{STIM_DIR}/absolute_sequence/{subject}.pickle'
 
     with open(file_name, 'rb') as f:
         stims = pickle.load(f)
-    tone = slab.Sound.pinknoise(duration=0.1) # tone to confirm button press
-    freefield.set_signal_and_speaker(signal=tone, speaker=23, chan_tag='channel')
 
-    return step, tone, stims
+    return step, stims
 
 ### ========== ABSOLUTE MEASURES
-def run_abs(subject, stims, samplerate, proc_list, table, step):
+def run_abs(subject, stims, proc_list, table, step):
     task = 'absolute'
 
     print('#################\n## CALIBRATION ## \n#################')
@@ -61,20 +57,24 @@ def run_abs(subject, stims, samplerate, proc_list, table, step):
     for idx, stim in enumerate(stims):
         print(f'STIMULUS: {idx+1} / {stims_length}')
         frequency = stim[0]
-        duration = 1
+        duration = 2
         direction = stim[1]
 
         [curr_speaker] = freefield.pick_speakers(direction)
 
-        freefield.write('channel', 99, ['RX81', 'RX82'])
-        freefield.write('f0', frequency, ['RX81', 'RX82'])
-        freefield.write('len', int(duration * samplerate * 0.95), ['RX81', 'RX82'])
-        freefield.write('chan', curr_speaker.analog_channel, curr_speaker.analog_proc)
+        stim = slab.Sound.tone(frequency=frequency, duration=duration)
+
         [other_proc] = [item for item in [proc_list[0][0], proc_list[1][0]] if item != curr_speaker.analog_proc]
+        freefield.write('data', stim.data, curr_speaker.analog_proc)
+        freefield.write('channel', curr_speaker.analog_channel, curr_speaker.analog_proc)
         freefield.write('chan', 99, other_proc)
         freefield.play()
         time.sleep(duration)
 
+        tone = slab.Sound.pinknoise(duration=0.1)  # tone to confirm button press
+        [curr_speaker] = freefield.pick_speakers(23)
+        freefield.write('data', tone.data, curr_speaker.analog_proc)
+        freefield.write('channel', curr_speaker.analog_channel, curr_speaker.analog_proc)
         freefield.write(tag='bitmask', value=8, processors='RX81')  # illuminate LED
         response = 0
         while not response:
