@@ -26,7 +26,7 @@ def load_processors(DIR):
                  ['RP2', 'RP2', f'{DIR}/rcx/button.rcx']]
 
     freefield.initialize('dome', device=proc_list, sensor_tracking=True) #
-    freefield.set_logger('warning')
+    freefield.set_logger('debug')
     directions = [21, 22, 23, 24, 25]
 
     return proc_list, directions
@@ -57,17 +57,18 @@ def run_abs(subject, stims, proc_list, table, step):
     for idx, stim in enumerate(stims):
         print(f'STIMULUS: {idx+1} / {stims_length}')
         frequency = stim[0]
-        duration = 2
+        duration = 2.0
         direction = stim[1]
 
         [curr_speaker] = freefield.pick_speakers(direction)
 
         stim = slab.Sound.tone(frequency=frequency, duration=duration)
-
+        stim = slab.Binaural(stim)
         [other_proc] = [item for item in [proc_list[0][0], proc_list[1][0]] if item != curr_speaker.analog_proc]
-        freefield.write('data', stim.data, curr_speaker.analog_proc)
+        freefield.write('data', stim.data, ['RX81', 'RX82'])
+        freefield.write('playbuflen', stim.n_samples, ['RX81', 'RX82'])
         freefield.write('channel', curr_speaker.analog_channel, curr_speaker.analog_proc)
-        freefield.write('chan', 99, other_proc)
+        freefield.write('channel', 99, other_proc)
         freefield.play()
         time.sleep(duration)
 
