@@ -2,6 +2,7 @@ import os
 from mido import MidiFile
 import pandas
 import random
+import slab
 
 # ====== DIRS AND PARAMS
 
@@ -77,5 +78,19 @@ def shuffle_pairs(pairs):
 
                 break
     return pairs
+
+
+def create_sound(frequency, midi_note, duration, condition, STIM_DIR):
+    if condition == 'pure_tone':
+        sound = slab.Sound.tone(frequency=frequency, duration=duration)
+    elif condition == 'irn':
+        sound = slab.Sound.irn(frequency=frequency, duration=duration)
+    elif condition == 'piano':
+        sound = slab.Sound(f'{STIM_DIR}/tones/piano/stim_{int(midi_note)}_piano.wav')
+    elif condition == 'violin':
+        sound = slab.Sound(f'{STIM_DIR}/tones/violin/stim_{int(midi_note)}_violin.wav')
+
+    return sound
+
 
 

@@ -1,7 +1,7 @@
 import pandas
 import os
 import json
-from utils import separate_melodies, notetofreq
+from utils import separate_melodies, notetofreq, shuffle_pairs
 import copy
 import pickle
 
@@ -71,11 +71,13 @@ for i in range(len(stims_trans)):
     notes.append(last)
 
 unique = list(set(notes))
+directions = [21, 22, 23, 24, 25]
+pairs = [(sound, speaker) for sound in unique for speaker in directions]
 
-range_freq = [notetofreq(f) for f in unique]
+stims = shuffle_pairs(pairs)
 
-with open(f'{STIM_DIR}/freqs.pickle', 'wb') as fp:
-    pickle.dump(range_freq, fp)
+with open(f'{STIM_DIR}/tones_sequence.pickle', 'wb') as fp:
+    pickle.dump(pairs, fp)
 
 
 # ====== FILE NAMES FOR PIANO AND VIOLIN

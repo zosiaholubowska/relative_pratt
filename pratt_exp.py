@@ -5,7 +5,7 @@ import random
 import freefield
 import os
 import pickle
-from utils import shuffle_pairs
+from utils import shuffle_pairs, notetofreq, create_sound
 from datetime import datetime
 import re
 
@@ -21,9 +21,9 @@ def load_parameters(subject):
 
 # =========== SET-UP
 def load_processors(DIR):
-    proc_list = [['RX81', 'RX8', f'{DIR}/rcx/piano.rcx'],
-                ['RX82', 'RX8', f'{DIR}/rcx/piano.rcx'],
-                 ['RP2', 'RP2', f'{DIR}/rcx/button.rcx']]
+    proc_list = [['RX81', 'RX8', f'{DIR}/rcx/sound_test.rcx'],
+                 ['RX82', 'RX8', f'{DIR}/rcx/sound_test.rcx'],
+                 ['RP2', 'RP2', f'{DIR}/rcx/button_sound.rcx']]
 
     freefield.initialize('dome', device=proc_list, sensor_tracking=True) #
     freefield.set_logger('debug')
@@ -32,18 +32,19 @@ def load_processors(DIR):
     return proc_list, directions
 
 # ========== STIMULI
-def load_stimuli_absolute(STIM_DIR, subject):
+def load_tones(STIM_DIR):
     step = 69
-    file_name = f'{STIM_DIR}/absolute_sequence/{subject}.pickle'
 
-    with open(file_name, 'rb') as f:
-        stims = pickle.load(f)
+    with open(f'{STIM_DIR}/tones_sequence.pickle', 'rb') as f:
+        pairs = pickle.load(f)
 
-    return step, stims
+    return step, pairs
 
 ### ========== ABSOLUTE MEASURES
-def run_abs(subject, stims, proc_list, table, step):
-    task = 'absolute'
+def run_pratt(subject, pairs, proc_list, table, step, condition, STIM_DIR):
+    task = condition
+
+    stims = shuffle_pairs(pairs)
 
     print('#################\n## CALIBRATION ## \n#################')
     freefield.calibrate_sensor(led_feedback=True, button_control=True)  # sensor calibration
@@ -51,35 +52,42 @@ def run_abs(subject, stims, proc_list, table, step):
 
     input("Do you want to continue? (PRESS ENTER): ")
     print("Continuing...")
-    stims_length = len(stims)
+
+
+    stims_length = len(stims[0:10])
 
     # ITERATE OVER ALL STIMULI
-    for idx, stim in enumerate(stims):
+    for idx, stim in enumerate(stims[0:10]):
         print(f'STIMULUS: {idx+1} / {stims_length}')
-        frequency = stim[0]
-        duration = 2.0
+        midi_note = stim[0]
+        frequency = notetofreq(midi_note)
+        duration = 1.0
         direction = stim[1]
+        # === CREATE THE SOUND
+        sound = create_sound(frequency=frequency, midi_note=midi_note, duration=duration, condition=condition, STIM_DIR=STIM_DIR)
+        sound.level = 100
 
+        # === WRITE THE LOUDSPEAKER ON THE PROCESSOR
         [curr_speaker] = freefield.pick_speakers(direction)
-
-        stim = slab.Sound.tone(frequency=frequency, duration=duration)
-        stim = slab.Binaural(stim)
         [other_proc] = [item for item in [proc_list[0][0], proc_list[1][0]] if item != curr_speaker.analog_proc]
-        freefield.write('data', stim.data, ['RX81', 'RX82'])
-        freefield.write('playbuflen', stim.n_samples, ['RX81', 'RX82'])
+        freefield.write('data', sound.data, ['RX81', 'RX82'])
+        freefield.write('playbuflen', sound.n_samples, ['RX81', 'RX82'])
         freefield.write('channel', curr_speaker.analog_channel, curr_speaker.analog_proc)
         freefield.write('channel', 99, other_proc)
         freefield.play()
-        time.sleep(duration)
-
-        tone = slab.Sound.pinknoise(duration=0.1)  # tone to confirm button press
+        time.sleep(int(duration))
+        # ===== PREPARE THE TONE FOR BUTTON CONFIRMATION
+        tone = slab.Sound.pinknoise(duration=0.1)
         [curr_speaker] = freefield.pick_speakers(23)
+        [other_proc] = [item for item in [proc_list[0][0], proc_list[1][0]] if item != curr_speaker.analog_proc]
         freefield.write('data', tone.data, curr_speaker.analog_proc)
+        freefield.write('playbuflen', tone.n_samples, ['RX81', 'RX82'])
         freefield.write('channel', curr_speaker.analog_channel, curr_speaker.analog_proc)
+        freefield.write('channel', 99, other_proc)
         freefield.write(tag='bitmask', value=8, processors='RX81')  # illuminate LED
         response = 0
         while not response:
-            pose = freefield.get_head_pose(method='sensor')
+            pose = freefield.get_head_pose(method='sensor') # read the head position
             if all(pose):
                 print('head pose: azimuth: %.1f, elevation: %.1f' % (pose[0], pose[1]), end="\r", flush=True)
             else:
@@ -88,8 +96,7 @@ def run_abs(subject, stims, proc_list, table, step):
         if all(pose):
             print('Response| azimuth: %.1f, elevation: %.1f' % (pose[0], pose[1]))
         freefield.write('chan', 99, ['RX81', 'RX82'])
-        freefield.write(tag='channel', value=1, processors='RX81')  # illuminate LED
-        freefield.write(tag='bitmask', value=0, processors='RX81')  # illuminate LED
+        freefield.write(tag='bitmask', value=0, processors='RX81')  # turn the light off LED
         freefield.play()
         response = freefield.read('response', 'RP2', 0)
         row = table.Row(timestamp=datetime.now(), subject = subject, task = task,
