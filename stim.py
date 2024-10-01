@@ -39,10 +39,10 @@ for i in range(len(separate_stims)):
 stims_trans = separate_stims.copy()
 
 for i in range(len(stims_trans)):
-    stims_trans[i]['key'] = 'c'
+    stims_trans[i]['key'] = 'c1'
 
 
-trans_dict = {'a' : -3, 'e' : 4, 'g' : 7, 'h' : 11}
+trans_dict = {'g1' : 7, 'c1' : 12}
 for key, value in trans_dict.items():
     print(key, value)
     separate_stims_trans = copy.deepcopy(separate_stims)
@@ -76,3 +76,10 @@ range_freq = [notetofreq(f) for f in unique]
 
 with open(f'{STIM_DIR}/freqs.pickle', 'wb') as fp:
     pickle.dump(range_freq, fp)
+
+
+# ====== FILE NAMES FOR PIANO AND VIOLIN
+
+piano_tones = [f for f in os.listdir(f'{STIM_DIR}/tones/piano') if '.wav' in f]
+directions = [21, 22, 23, 24, 25]
+pairs = [(sound, speaker) for sound in piano_tones for speaker in directions]
