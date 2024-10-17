@@ -15,7 +15,7 @@ def load_parameters(subject):
     STIM_DIR = f'{DIR}/stimuli'
     samplerate = 44828
     table = slab.ResultsTable(subject=subject,
-                              columns='timestamp, subject, task, idx, stim, frequency, direction, interval, azimuth, elevation')
+                              columns='timestamp, subject, condition, idx, stim, frequency, direction, interval, azimuth, elevation')
 
     return DIR, STIM_DIR, samplerate, table
 
@@ -38,11 +38,13 @@ def load_tones(STIM_DIR):
     with open(f'{STIM_DIR}/tones_sequence.pickle', 'rb') as f:
         pairs = pickle.load(f)
 
-    return step, pairs
+    conditions = ['pure_tone', 'irn', 'piano', 'viola', 'flute']
+    random.shuffle(conditions)
+
+    return step, pairs, conditions
 
 ### ========== ABSOLUTE MEASURES
 def run_pratt(subject, pairs, proc_list, table, step, condition, STIM_DIR):
-    task = condition
 
     stims = shuffle_pairs(pairs)
 
@@ -65,7 +67,7 @@ def run_pratt(subject, pairs, proc_list, table, step, condition, STIM_DIR):
         direction = stim[1]
         # === CREATE THE SOUND
         sound = create_sound(frequency=frequency, midi_note=midi_note, duration=duration, condition=condition, STIM_DIR=STIM_DIR)
-        sound.level = 100
+        sound.level = 80
 
         # === WRITE THE LOUDSPEAKER ON THE PROCESSOR
         [curr_speaker] = freefield.pick_speakers(direction)
@@ -75,7 +77,7 @@ def run_pratt(subject, pairs, proc_list, table, step, condition, STIM_DIR):
         freefield.write('channel', curr_speaker.analog_channel, curr_speaker.analog_proc)
         freefield.write('channel', 99, other_proc)
         freefield.play()
-        time.sleep(int(duration))
+        time.sleep(2.0)
         # ===== PREPARE THE TONE FOR BUTTON CONFIRMATION
         tone = slab.Sound.pinknoise(duration=0.1)
         [curr_speaker] = freefield.pick_speakers(23)
@@ -99,7 +101,7 @@ def run_pratt(subject, pairs, proc_list, table, step, condition, STIM_DIR):
         freefield.write(tag='bitmask', value=0, processors='RX81')  # turn the light off LED
         freefield.play()
         response = freefield.read('response', 'RP2', 0)
-        row = table.Row(timestamp=datetime.now(), subject = subject, task = task,
+        row = table.Row(timestamp=datetime.now(), subject = subject, condition = condition,
                         idx = idx, stim = stim, frequency = frequency, direction = direction, interval= 'NA',
                         azimuth = pose[0], elevation = pose[1])
         table.write(row)

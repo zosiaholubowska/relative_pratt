@@ -1,14 +1,4 @@
-### LOAD LIBRARIES
-import time
-import pandas
-import slab
-import random
-import freefield
-import os
-import pickle
-from utils import shuffle_pairs
-from datetime import datetime
-from pratt_exp import load_parameters, load_processors, load_stimuli_absolute, run_abs, load_stimuli_relative, run_rel
+from pratt_exp import load_parameters, load_processors, load_tones, run_pratt
 
 ### INSERT PARTICIPANT'S NUMBER HERE
 subject = 'sub00'
@@ -20,15 +10,16 @@ DIR, STIM_DIR, samplerate, table = load_parameters(subject)
 proc_list, directions = load_processors(DIR)
 
 ### LOAD STIMULI - ABSOLUTE MEASURES
-step, tone, stims = load_stimuli_absolute(STIM_DIR, subject)
+step, pairs, conditions = load_tones(STIM_DIR)
 
-### RUN *EXPERIMENT - PART 1* - absolute measures
-run_abs(subject, stims, proc_list, table, step)
+### RUN *EXPERIMENT 1* - absolute measures
+for condition in conditions:
+    run_pratt(subject, pairs, proc_list, table, step, condition, STIM_DIR)
 
-### LOAD STIMULI - RELATIVE MEASURES
+    print(f'END OF THE BLOCK - {condition}')
+    print('Its time for a break')
+    inp = input('Do you want to continue? (y/n)')
 
-step, stims, tone = load_stimuli_relative(STIM_DIR, directions)
+    if inp == 'n':
+        break
 
-### RUN *EXPERIMENT - PART 2* - relative measures
-
-run_rel(subject, stims, STIM_DIR, samplerate, proc_list, step, table)

@@ -83,12 +83,15 @@ def shuffle_pairs(pairs):
 def create_sound(frequency, midi_note, duration, condition, STIM_DIR):
     if condition == 'pure_tone':
         sound = slab.Sound.tone(frequency=frequency, duration=duration)
+        sound = sound.ramp(duration=0.01)
     elif condition == 'irn':
         sound = slab.Sound.irn(frequency=frequency, duration=duration)
     elif condition == 'piano':
         sound = slab.Sound(f'{STIM_DIR}/tones/piano/stim_{int(midi_note)}_piano.wav')
-    elif condition == 'violin':
-        sound = slab.Sound(f'{STIM_DIR}/tones/violin/stim_{int(midi_note)}_violin.wav')
+    elif condition == 'viola':
+        sound = slab.Sound(f'{STIM_DIR}/tones/viola/stim_{int(midi_note)}_viola.wav')
+    elif condition == 'flute':
+        sound = slab.Sound(f'{STIM_DIR}/tones/flute/stim_{int(midi_note)}_flute.wav')
 
     return sound
 
