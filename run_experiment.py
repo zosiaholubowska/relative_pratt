@@ -1,10 +1,11 @@
 from pratt_exp import load_parameters, load_processors, load_tones, run_pratt
+from analysis import create_dataframe, plot_boxplot, plot_slope
 
 ### INSERT PARTICIPANT'S NUMBER HERE
 subject = 'sub00'
 
 ### LOAD PARAMETERS
-DIR, STIM_DIR, samplerate, table = load_parameters(subject)
+DIR, STIM_DIR, RESULTS_DIR, samplerate, table = load_parameters(subject)
 
 ### LOAD PROCESSORS
 proc_list, directions = load_processors(DIR)
@@ -13,8 +14,9 @@ proc_list, directions = load_processors(DIR)
 step, pairs, conditions = load_tones(STIM_DIR)
 
 ### RUN *EXPERIMENT 1* - absolute measures
-for condition in conditions:
-    run_pratt(subject, pairs, proc_list, table, step, condition, STIM_DIR)
+
+for cond_index, condition in enumerate(conditions):
+    run_pratt(subject, pairs, proc_list, table, step, condition, STIM_DIR, cond_index)
 
     print(f'END OF THE BLOCK - {condition}')
     print('Its time for a break')
@@ -22,4 +24,10 @@ for condition in conditions:
 
     if inp == 'n':
         break
+
+
+### PLOT THE RESULTS
+create_dataframe(RESULTS_DIR)
+plot_slope(subject)
+plot_boxplot(subject)
 

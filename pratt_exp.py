@@ -13,11 +13,12 @@ import re
 def load_parameters(subject):
     DIR = os.getcwd()
     STIM_DIR = f'{DIR}/stimuli'
+    RESULTS_DIR = f'{DIR}/Results'
     samplerate = 44828
     table = slab.ResultsTable(subject=subject,
-                              columns='timestamp, subject, condition, idx, stim, frequency, direction, interval, azimuth, elevation')
+                              columns='timestamp, subject, condition, cond_index, idx, midi_note, frequency, direction, interval, azimuth, elevation')
 
-    return DIR, STIM_DIR, samplerate, table
+    return DIR, STIM_DIR, RESULTS_DIR, samplerate, table
 
 # =========== SET-UP
 def load_processors(DIR):
@@ -44,8 +45,7 @@ def load_tones(STIM_DIR):
     return step, pairs, conditions
 
 ### ========== ABSOLUTE MEASURES
-def run_pratt(subject, pairs, proc_list, table, step, condition, STIM_DIR):
-
+def run_pratt(subject, pairs, proc_list, table, step, condition, STIM_DIR, cond_index):
     stims = shuffle_pairs(pairs)
 
     print('#################\n## CALIBRATION ## \n#################')
@@ -101,8 +101,8 @@ def run_pratt(subject, pairs, proc_list, table, step, condition, STIM_DIR):
         freefield.write(tag='bitmask', value=0, processors='RX81')  # turn the light off LED
         freefield.play()
         response = freefield.read('response', 'RP2', 0)
-        row = table.Row(timestamp=datetime.now(), subject = subject, condition = condition,
-                        idx = idx, stim = stim, frequency = frequency, direction = direction, interval= 'NA',
+        row = table.Row(timestamp=datetime.now(), subject = subject, condition = condition, cond_index = cond_index,
+                        idx = idx, midi_note = midi_note, frequency = frequency, direction = direction, interval= 'NA',
                         azimuth = pose[0], elevation = pose[1])
         table.write(row)
         time.sleep(1)
