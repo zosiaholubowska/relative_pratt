@@ -21,13 +21,13 @@ elevation_mapping = {21 : 25.0,
 # ====== CREATE A BIG DATAFRAME
 
 def create_dataframe(RESULTS_DIR):
-    subjects = [f for f in os.listdir(RESULTS_DIR) if f.startswith('sub')]
+    subjects = [f for f in os.listdir(RESULTS_DIR) if f.startswith('Sub')]
     dfs = []
     for subject in subjects:
         dir = f'{RESULTS_DIR}/{subject}'
         files = os.listdir(dir)
         for file in files:
-            temp_data = pandas.read_csv(f'{dir}/{file}', sep='\t')
+            temp_data = pandas.read_csv(f'{dir}/{file}', sep=',')
             dfs.append(temp_data)
 
     data = pandas.concat(dfs)

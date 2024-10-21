@@ -27,14 +27,14 @@ def load_processors(DIR):
                  ['RP2', 'RP2', f'{DIR}/rcx/button_sound.rcx']]
 
     freefield.initialize('dome', device=proc_list, sensor_tracking=True) #
-    freefield.set_logger('debug')
+    #freefield.set_logger('debug')
     directions = [21, 22, 23, 24, 25]
 
     return proc_list, directions
 
 # ========== STIMULI
 def load_tones(STIM_DIR):
-    step = 69
+    step = 85
 
     with open(f'{STIM_DIR}/tones_sequence.pickle', 'rb') as f:
         pairs = pickle.load(f)
@@ -55,11 +55,11 @@ def run_pratt(subject, pairs, proc_list, table, step, condition, STIM_DIR, cond_
     input("Do you want to continue? (PRESS ENTER): ")
     print("Continuing...")
 
-
-    stims_length = len(stims[0:10])
+    stims_length = len(stims)
+    #stims_length = len(stims[0:10])
 
     # ITERATE OVER ALL STIMULI
-    for idx, stim in enumerate(stims[0:10]):
+    for idx, stim in enumerate(stims): #[0:10]
         print(f'STIMULUS: {idx+1} / {stims_length}')
         midi_note = stim[0]
         frequency = notetofreq(midi_note)
@@ -89,12 +89,12 @@ def run_pratt(subject, pairs, proc_list, table, step, condition, STIM_DIR, cond_
         freefield.write(tag='bitmask', value=8, processors='RX81')  # illuminate LED
         response = 0
         while not response:
-            pose = freefield.get_head_pose(method='sensor') # read the head position
-            if all(pose):
-                print('head pose: azimuth: %.1f, elevation: %.1f' % (pose[0], pose[1]), end="\r", flush=True)
-            else:
-                print('no head pose detected', end="\r", flush=True)
             response = freefield.read('response', processor='RP2')
+        pose = freefield.get_head_pose(method='sensor')  # read the head position
+        if all(pose):
+            print('head pose: azimuth: %.1f, elevation: %.1f' % (pose[0], pose[1]), end="\r", flush=True)
+        else:
+            print('no head pose detected', end="\r", flush=True)
         if all(pose):
             print('Response| azimuth: %.1f, elevation: %.1f' % (pose[0], pose[1]))
         freefield.write('chan', 99, ['RX81', 'RX82'])
