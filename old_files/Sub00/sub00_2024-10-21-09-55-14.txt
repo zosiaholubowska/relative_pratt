@@ -1,3 +1,0 @@
-timestamp,subject,condition,cond_index,idx,midi_note,frequency,direction,interval,azimuth,elevation
-2024-10-21 09:56:22.110307,	sub00,	pure_tone,	0,	0,	63.0,	311.1269837220809,	21,	NA,	-0.171234130859375,	-0.04528951644897461
-2024-10-21 09:56:45.414495,	sub00,	pure_tone,	0,	1,	85.0,	1108.7305239074883,	22,	NA,	17.81620979309082,	-28.4754638671875

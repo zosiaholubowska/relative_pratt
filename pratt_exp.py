@@ -34,12 +34,12 @@ def load_processors(DIR):
 
 # ========== STIMULI
 def load_tones(STIM_DIR):
-    step = 85
+    step = 90
 
     with open(f'{STIM_DIR}/tones_sequence.pickle', 'rb') as f:
         pairs = pickle.load(f)
 
-    conditions = ['pure_tone', 'irn', 'piano', 'viola', 'flute']
+    conditions = ['irn', 'viola', 'flute'] #'pure_tone','piano',
     random.shuffle(conditions)
 
     return step, pairs, conditions

@@ -4,6 +4,7 @@ import json
 from utils import separate_melodies, notetofreq, shuffle_pairs
 import copy
 import pickle
+import numpy as np
 
 # ======= DIRS AND PARAMS
 
@@ -11,6 +12,34 @@ DIR = os.getcwd()
 STIM_DIR = f'{DIR}/stimuli'
 
 files = [f for f in os.listdir(STIM_DIR) if '.mid' in f]
+
+
+# ======== CREATE PAIRS
+min_tone = 55
+max_tone = 108
+
+n = 4  # Number of equally spaced tones you want
+
+tones = np.linspace(min_tone, max_tone, n).round().astype(int)
+print(tones)
+
+tones_low = [tone - 1 for tone in tones]
+tones_high = [tone + 1 for tone in tones]
+
+all_tones = []
+all_tones.extend(tones_low)
+all_tones.extend(tones)
+all_tones.extend(tones_high)
+
+directions = [21, 22, 23, 24, 25]
+directions = [21, 22, 23, 24, 25]
+all_tones = [54, 72, 89, 107, 55, 73, 90, 108, 56, 74, 91, 109]
+
+pairs = [(sound, speaker) for sound in all_tones for speaker in directions for _ in range(3)]
+
+with open(f'{STIM_DIR}/tones_sequence.pickle', 'wb') as fp:
+    pickle.dump(pairs, fp)
+
 
 # ======= IMPORT FILES
 
@@ -82,6 +111,6 @@ with open(f'{STIM_DIR}/tones_sequence.pickle', 'wb') as fp:
 
 # ====== FILE NAMES FOR PIANO AND VIOLIN
 
-piano_tones = [f for f in os.listdir(f'{STIM_DIR}/tones/piano') if '.wav' in f]
+viola_tones = [f for f in os.listdir(f'{STIM_DIR}/tones/viola') if '.wav' in f]
 directions = [21, 22, 23, 24, 25]
 pairs = [(sound, speaker) for sound in piano_tones for speaker in directions]

@@ -1,1 +1,0 @@
-timestamp,subject,task,idx,stim,frequency,direction,interval,azimuth,elevation

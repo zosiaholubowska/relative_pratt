@@ -3,12 +3,16 @@ import numpy
 import os
 import matplotlib.pyplot as plt
 import seaborn as sns
+import statsmodels.api as sm
+from utils import notetofreq
 
 # ====== DIRECTORIES
 
 DIR = os.getcwd()
 RESULTS_DIR = f'{DIR}/Results'
 PLOT_DIR = f'{DIR}/plots'
+
+subject = 'sub00'
 
 # ====== CONFIGS
 
@@ -34,7 +38,73 @@ def create_dataframe(RESULTS_DIR):
     data['elevation_ls'] = data['direction'].map(elevation_mapping)
     data['azimuth_ls'] = 0.0
     data['elevation_diff'] = data['elevation'] - data['elevation_ls']
+    data = data.apply(lambda x: x.str.replace('\t', '') if x.dtype == "object" else x)
+    data['midi_bin'] = ''
+    data['frequency_bin'] = ''
+    for index, row in data.iterrows():
+        if 54 <= row['midi_note'] <= 56:
+            data.loc[index, 'midi_bin'] = 55
+        elif 72 <= row['midi_note'] <= 74:
+            data.loc[index, 'midi_bin'] = 73
+        elif 89 <= row['midi_note'] <= 91:
+            data.loc[index, 'midi_bin'] = 90
+        elif 107 <= row['midi_note'] <= 109:
+            data.loc[index, 'midi_bin'] = 108
+        data.loc[index, 'frequency_bin'] = notetofreq(int(data.loc[index, 'midi_bin']))
     data.to_csv(f'{RESULTS_DIR}/data.csv', index=False)
+
+
+# Plot - slopes
+data = pandas.read_csv(f'{RESULTS_DIR}/data.csv')
+sub_data = data[data['subject']==subject]
+g = sns.lmplot(x='frequency_bin', y='elevation', hue='condition', data=data, height=6, aspect=2)
+g.set_axis_labels('Frequency (Hz)', 'Perceived Elevation (degrees)')
+plt.show()
+plt.savefig(f'{PLOT_DIR}/pratts_effect_plot.svg')
+
+
+# Plot - boxplot
+plt.figure(figsize=(12, 6))
+sns.boxplot(x='frequency_bin', y='elevation', hue='condition', data=data)
+plt.xlabel('Frequency (Hz)')
+plt.ylabel('Perceived Elevation (degrees)')
+plt.title('Boxplot of Elevation by Frequency Bin and Condition')
+plt.savefig(f'{PLOT_DIR}/pratts_effect_boxplot.svg')
+plt.show()
+
+
+
+
+###############################################
+def calculate_slope(group):
+    X = group['frequency']
+    y = group['elevation']
+
+    # Add a constant for the intercept in the model
+    X = sm.add_constant(X)
+
+    # Fit the OLS regression model
+    model = sm.OLS(y, X).fit()
+
+    # Return the slope of the regression
+    return pandas.Series({'slope': model.params[1]})
+
+
+slopes = data.groupby(['direction', 'condition']).apply(calculate_slope).reset_index()
+
+# Plot using seaborn, with direction on the x-axis, slope on the y-axis, and hue representing condition
+plt.figure(figsize=(12, 6))
+sns.lineplot(x='direction', y='slope', hue='condition', data=slopes, marker='o')
+
+# Set axis labels and title
+plt.xlabel('Direction')
+plt.ylabel('Slope')
+plt.title('Slope of Perceived Elevation vs Frequency by Direction and Condition')
+
+# Show plot
+plt.tight_layout()
+plt.show()
+
 
 # == FILTER DATA FOR SINGLE PARTICIPANT
 def plot_boxplot(subject):
@@ -73,16 +143,16 @@ def plot_slope(subject):
     data = pandas.read_csv(f'{RESULTS_DIR}/data.csv')
     sub_data = data[data['subject'] == subject]
     palette = sns.color_palette('Set1')
-    mean_data = sub_data.groupby(['condition', 'midi_note']).agg({'elevation': 'mean'}).reset_index()
+    mean_data = sub_data.groupby(['condition', 'midi_note']).agg({'elevation_diff': 'mean'}).reset_index()
     conditions = sub_data['condition'].unique()
     plt.figure(figsize=(8, 6))
 
     for i, condition in enumerate(conditions):
         condition_data = mean_data[mean_data['condition'] == condition]
 
-        plt.scatter(condition_data['midi_note'], condition_data['elevation'], label=condition, color=palette[i])
+        plt.scatter(condition_data['midi_note'], condition_data['elevation_diff'], label=condition, color=palette[i])
 
-        plt.plot(condition_data['midi_note'], condition_data['elevation'], color=palette[i])
+        plt.plot(condition_data['midi_note'], condition_data['elevation_diff'], color=palette[i])
 
     # Add labels and legend
     plt.xlabel('MIDI Note')
