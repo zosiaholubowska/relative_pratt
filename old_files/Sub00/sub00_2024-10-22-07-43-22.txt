@@ -1,0 +1,3 @@
+timestamp,subject,condition,cond_index,idx,midi_note,frequency,direction,interval,azimuth,elevation
+2024-10-22 07:50:22.466613,	sub00,	viola,	0,	0,	87.0,	1244.5079348883237,	25,	NA,	21.126602172851562,	19.6578369140625
+2024-10-22 07:50:27.659067,	sub00,	viola,	0,	1,	55.0,	195.99771799087466,	21,	NA,	21.1072998046875,	19.47162628173828

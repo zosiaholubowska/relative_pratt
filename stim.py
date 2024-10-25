@@ -15,8 +15,8 @@ files = [f for f in os.listdir(STIM_DIR) if '.mid' in f]
 
 
 # ======== CREATE PAIRS
-min_tone = 55
-max_tone = 108
+min_tone = 56
+max_tone = 107
 
 n = 4  # Number of equally spaced tones you want
 
@@ -33,7 +33,7 @@ all_tones.extend(tones_high)
 
 directions = [21, 22, 23, 24, 25]
 directions = [21, 22, 23, 24, 25]
-all_tones = [54, 72, 89, 107, 55, 73, 90, 108, 56, 74, 91, 109]
+
 
 pairs = [(sound, speaker) for sound in all_tones for speaker in directions for _ in range(3)]
 

@@ -41,12 +41,15 @@ def load_tones(STIM_DIR):
 
     conditions = ['irn', 'viola', 'flute'] #'pure_tone','piano',
     random.shuffle(conditions)
+    shuffled_pairs = {}
+    for condition in conditions:
+        shuffled_pairs[condition] = shuffle_pairs(pairs)
 
-    return step, pairs, conditions
+    return step, shuffled_pairs, conditions
 
 ### ========== ABSOLUTE MEASURES
-def run_pratt(subject, pairs, proc_list, table, step, condition, STIM_DIR, cond_index):
-    stims = shuffle_pairs(pairs)
+def run_pratt(subject, shuffled_pairs, proc_list, table, step, condition, STIM_DIR, cond_index):
+    stims = shuffled_pairs[condition]
 
     print('#################\n## CALIBRATION ## \n#################')
     freefield.calibrate_sensor(led_feedback=True, button_control=True)  # sensor calibration

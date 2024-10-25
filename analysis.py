@@ -25,7 +25,7 @@ elevation_mapping = {21 : 25.0,
 # ====== CREATE A BIG DATAFRAME
 
 def create_dataframe(RESULTS_DIR):
-    subjects = [f for f in os.listdir(RESULTS_DIR) if f.startswith('Sub')]
+    subjects = [f for f in os.listdir(RESULTS_DIR) if f.startswith('sub')]
     dfs = []
     for subject in subjects:
         dir = f'{RESULTS_DIR}/{subject}'
@@ -41,16 +41,17 @@ def create_dataframe(RESULTS_DIR):
     data = data.apply(lambda x: x.str.replace('\t', '') if x.dtype == "object" else x)
     data['midi_bin'] = ''
     data['frequency_bin'] = ''
+    data = data.reset_index()
     for index, row in data.iterrows():
-        if 54 <= row['midi_note'] <= 56:
-            data.loc[index, 'midi_bin'] = 55
+        if 55 <= row['midi_note'] <= 57:
+            data.loc[index, 'midi_bin'] = 56
         elif 72 <= row['midi_note'] <= 74:
             data.loc[index, 'midi_bin'] = 73
         elif 89 <= row['midi_note'] <= 91:
             data.loc[index, 'midi_bin'] = 90
-        elif 107 <= row['midi_note'] <= 109:
-            data.loc[index, 'midi_bin'] = 108
-        data.loc[index, 'frequency_bin'] = notetofreq(int(data.loc[index, 'midi_bin']))
+        elif 106 <= row['midi_note'] <= 108:
+            data.loc[index, 'midi_bin'] = 107
+        data.loc[index, 'frequency_bin'] = round(notetofreq(int(data.loc[index, 'midi_bin'])))
     data.to_csv(f'{RESULTS_DIR}/data.csv', index=False)
 
 
@@ -65,12 +66,12 @@ plt.savefig(f'{PLOT_DIR}/pratts_effect_plot.svg')
 
 # Plot - boxplot
 plt.figure(figsize=(12, 6))
-sns.boxplot(x='frequency_bin', y='elevation', hue='condition', data=data)
+sns.boxplot(x='frequency_bin', y='elevation', hue='condition', data=sub_data)
 plt.xlabel('Frequency (Hz)')
 plt.ylabel('Perceived Elevation (degrees)')
 plt.title('Boxplot of Elevation by Frequency Bin and Condition')
-plt.savefig(f'{PLOT_DIR}/pratts_effect_boxplot.svg')
 plt.show()
+plt.savefig(f'{PLOT_DIR}/pratts_effect_boxplot.svg')
 
 
 
