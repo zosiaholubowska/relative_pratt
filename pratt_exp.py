@@ -39,9 +39,10 @@ def load_tones(STIM_DIR):
     with open(f'{STIM_DIR}/tones_sequence.pickle', 'rb') as f:
         pairs = pickle.load(f)
 
-    conditions = ['irn', 'viola', 'flute'] #'pure_tone','piano',
+    conditions = ['complex', 'viola', 'flute']
     random.shuffle(conditions)
     shuffled_pairs = {}
+
     for condition in conditions:
         shuffled_pairs[condition] = shuffle_pairs(pairs)
 
@@ -68,6 +69,7 @@ def run_pratt(subject, shuffled_pairs, proc_list, table, step, condition, STIM_D
         frequency = notetofreq(midi_note)
         duration = 1.0
         direction = stim[1]
+        print(f'Loudspeaker| {direction}\nMIDI note| {midi_note}')
         # === CREATE THE SOUND
         sound = create_sound(frequency=frequency, midi_note=midi_note, duration=duration, condition=condition, STIM_DIR=STIM_DIR)
         sound.level = 80

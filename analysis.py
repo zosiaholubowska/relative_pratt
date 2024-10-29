@@ -52,13 +52,17 @@ def create_dataframe(RESULTS_DIR):
         elif 106 <= row['midi_note'] <= 108:
             data.loc[index, 'midi_bin'] = 107
         data.loc[index, 'frequency_bin'] = round(notetofreq(int(data.loc[index, 'midi_bin'])))
+    data['interval'] = data.apply(lambda row:
+                                  numpy.nan if row['idx'] == 0
+                                  else round((row['frequency_bin'] / data.loc[row.name - 1, 'frequency_bin']),1),
+                                  axis=1)
     data.to_csv(f'{RESULTS_DIR}/data.csv', index=False)
 
 
 # Plot - slopes
 data = pandas.read_csv(f'{RESULTS_DIR}/data.csv')
 sub_data = data[data['subject']==subject]
-g = sns.lmplot(x='frequency_bin', y='elevation', hue='condition', data=data, height=6, aspect=2)
+g = sns.lmplot(x='frequency_bin', y='elevation', hue='condition', data=sub_data, height=6, aspect=2)
 g.set_axis_labels('Frequency (Hz)', 'Perceived Elevation (degrees)')
 plt.show()
 plt.savefig(f'{PLOT_DIR}/pratts_effect_plot.svg')
@@ -66,15 +70,24 @@ plt.savefig(f'{PLOT_DIR}/pratts_effect_plot.svg')
 
 # Plot - boxplot
 plt.figure(figsize=(12, 6))
-sns.boxplot(x='frequency_bin', y='elevation', hue='condition', data=sub_data)
+sns.boxplot(x='frequency_bin', y='elevation', hue='condition', data=data)
 plt.xlabel('Frequency (Hz)')
 plt.ylabel('Perceived Elevation (degrees)')
 plt.title('Boxplot of Elevation by Frequency Bin and Condition')
 plt.show()
 plt.savefig(f'{PLOT_DIR}/pratts_effect_boxplot.svg')
 
+data_grouped = data.groupby(['condition', 'frequency_bin']).mean('elevation_diff')
 
+plt.figure(figsize=(12, 6))
+sns.boxplot(x='interval', y='elevation_diff', data=data[data['condition']=='viola'])
+plt.xlabel('Interval')
+plt.ylabel('Perceived Elevation (degrees)')
+plt.title('Boxplot of Elevation by Interval and Condition')
+plt.show()
+plt.savefig(f'{PLOT_DIR}/relative_pratts_effect_boxplot.svg')
 
+data_grouped = data.groupby(['condition', 'interval']).mean('elevation_diff')
 
 ###############################################
 def calculate_slope(group):

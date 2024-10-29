@@ -66,18 +66,18 @@ def separate_melodies(df, interval=8):
     return split_dfs
 
 def shuffle_pairs(pairs):
-    random.shuffle(pairs)
+    temp_pairs = pairs[:]
+    random.shuffle(temp_pairs)
     valid_order = False
 
     while not valid_order:
         valid_order = True
-        for i in range(1, len(pairs)):
-            if pairs[i][0] == pairs[i-1][0]:
-                random.shuffle(pairs)
+        for i in range(1, len(temp_pairs)):
+            if temp_pairs[i][0] == temp_pairs[i-1][0]:
+                random.shuffle(temp_pairs)
                 valid_order = False
-
                 break
-    return pairs
+    return temp_pairs
 
 
 def create_sound(frequency, midi_note, duration, condition, STIM_DIR):
@@ -86,6 +86,8 @@ def create_sound(frequency, midi_note, duration, condition, STIM_DIR):
         sound = sound.ramp(duration=0.01)
     elif condition == 'irn':
         sound = slab.Sound.irn(frequency=frequency, duration=duration)
+    elif condition == 'complex':
+        sound = slab.Sound.harmoniccomplex(f0=frequency, duration=duration)
     elif condition == 'piano':
         sound = slab.Sound(f'{STIM_DIR}/tones/piano/stim_{int(midi_note)}_piano.wav')
     elif condition == 'viola':
