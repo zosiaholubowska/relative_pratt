@@ -70,7 +70,7 @@ plt.savefig(f'{PLOT_DIR}/pratts_effect_plot.svg')
 
 # Plot - boxplot
 plt.figure(figsize=(12, 6))
-sns.boxplot(x='frequency_bin', y='elevation', hue='condition', data=data)
+sns.boxplot(x='frequency_bin', y='elevation', hue='condition', data=sub_data)
 plt.xlabel('Frequency (Hz)')
 plt.ylabel('Perceived Elevation (degrees)')
 plt.title('Boxplot of Elevation by Frequency Bin and Condition')
