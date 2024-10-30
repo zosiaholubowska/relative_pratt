@@ -2,7 +2,7 @@ from pratt_exp import load_parameters, load_processors, load_tones, run_pratt
 #from analysis import create_dataframe, plot_boxplot, plot_slope
 
 ### INSERT PARTICIPANT'S NUMBER HERE
-subject = 'sub04-pilot'
+subject = 'sub05-pilot'
 
 ### LOAD PARAMETERS
 DIR, STIM_DIR, RESULTS_DIR, samplerate, table = load_parameters(subject)

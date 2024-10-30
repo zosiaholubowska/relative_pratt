@@ -62,6 +62,7 @@ def create_dataframe(RESULTS_DIR):
 # Plot - slopes
 data = pandas.read_csv(f'{RESULTS_DIR}/data.csv')
 sub_data = data[data['subject']==subject]
+plt.figure(figsize=(12, 6))
 g = sns.lmplot(x='frequency_bin', y='elevation', hue='condition', data=sub_data, height=6, aspect=2)
 g.set_axis_labels('Frequency (Hz)', 'Perceived Elevation (degrees)')
 plt.show()
@@ -70,7 +71,7 @@ plt.savefig(f'{PLOT_DIR}/pratts_effect_plot.svg')
 
 # Plot - boxplot
 plt.figure(figsize=(12, 6))
-sns.boxplot(x='frequency_bin', y='elevation', hue='condition', data=sub_data)
+sns.boxplot(x='frequency_bin', y='elevation', hue='condition', data=data)
 plt.xlabel('Frequency (Hz)')
 plt.ylabel('Perceived Elevation (degrees)')
 plt.title('Boxplot of Elevation by Frequency Bin and Condition')

@@ -59,11 +59,11 @@ def run_pratt(subject, shuffled_pairs, proc_list, table, step, condition, STIM_D
     input("Do you want to continue? (PRESS ENTER): ")
     print("Continuing...")
 
-    stims_length = len(stims)
-    #stims_length = len(stims[0:10])
+    #stims_length = len(stims)
+    stims_length = len(stims[0:20])
 
     # ITERATE OVER ALL STIMULI
-    for idx, stim in enumerate(stims): #[0:10]
+    for idx, stim in enumerate(stims[0:20]): #
         print(f'STIMULUS: {idx+1} / {stims_length}')
         midi_note = stim[0]
         frequency = notetofreq(midi_note)
