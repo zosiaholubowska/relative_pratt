@@ -41,6 +41,16 @@ with open(f'{STIM_DIR}/tones_sequence.pickle', 'wb') as fp:
     pickle.dump(pairs, fp)
 
 
+# SHUFFLED SEQUENCE
+
+conditions = ['complex', 'viola', 'flute']
+shuffled_pairs = {}
+for condition in conditions:
+    shuffled_pairs[condition] = shuffle_pairs(pairs)
+
+with open(f'{STIM_DIR}/shuffled_pairs.pickle', 'wb') as fp:
+    pickle.dump(shuffled_pairs, fp)
+
 # ======= IMPORT FILES
 
 stims_all = pandas.read_csv(f'{STIM_DIR}/stims_all.csv', sep=",")

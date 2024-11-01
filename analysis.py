@@ -54,7 +54,7 @@ def create_dataframe(RESULTS_DIR):
         data.loc[index, 'frequency_bin'] = round(notetofreq(int(data.loc[index, 'midi_bin'])))
     data['interval'] = data.apply(lambda row:
                                   numpy.nan if row['idx'] == 0
-                                  else round((row['frequency_bin'] / data.loc[row.name - 1, 'frequency_bin']),1),
+                                  else round((row['frequency_bin'] / data.loc[row.name - 1, 'frequency_bin']),2),
                                   axis=1)
     data.to_csv(f'{RESULTS_DIR}/data.csv', index=False)
 
@@ -63,7 +63,7 @@ def create_dataframe(RESULTS_DIR):
 data = pandas.read_csv(f'{RESULTS_DIR}/data.csv')
 sub_data = data[data['subject']==subject]
 plt.figure(figsize=(12, 6))
-g = sns.lmplot(x='frequency_bin', y='elevation', hue='condition', data=sub_data, height=6, aspect=2)
+g = sns.lmplot(x='frequency_bin', y='elevation', hue='condition', data=data, height=6, aspect=2)
 g.set_axis_labels('Frequency (Hz)', 'Perceived Elevation (degrees)')
 plt.show()
 plt.savefig(f'{PLOT_DIR}/pratts_effect_plot.svg')
@@ -81,7 +81,7 @@ plt.savefig(f'{PLOT_DIR}/pratts_effect_boxplot.svg')
 data_grouped = data.groupby(['condition', 'frequency_bin']).mean('elevation_diff')
 
 plt.figure(figsize=(12, 6))
-sns.boxplot(x='interval', y='elevation_diff', data=data[data['condition']=='viola'])
+sns.boxplot(x='interval', y='elevation_diff', data=data[data['condition']=='flute'])
 plt.xlabel('Interval')
 plt.ylabel('Perceived Elevation (degrees)')
 plt.title('Boxplot of Elevation by Interval and Condition')
@@ -105,11 +105,11 @@ def calculate_slope(group):
     return pandas.Series({'slope': model.params[1]})
 
 
-slopes = data.groupby(['direction', 'condition']).apply(calculate_slope).reset_index()
+slopes = data.groupby(['subject', 'condition']).apply(calculate_slope).reset_index()
 
 # Plot using seaborn, with direction on the x-axis, slope on the y-axis, and hue representing condition
 plt.figure(figsize=(12, 6))
-sns.lineplot(x='direction', y='slope', hue='condition', data=slopes, marker='o')
+sns.boxplot(x='condition', y='slope', data=slopes)
 
 # Set axis labels and title
 plt.xlabel('Direction')
