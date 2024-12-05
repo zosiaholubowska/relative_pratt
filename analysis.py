@@ -12,8 +12,6 @@ DIR = os.getcwd()
 RESULTS_DIR = f'{DIR}/Results'
 PLOT_DIR = f'{DIR}/plots'
 
-subject = 'sub00'
-
 # ====== CONFIGS
 
 elevation_mapping = {21 : 25.0,
@@ -38,10 +36,11 @@ def create_dataframe(RESULTS_DIR):
     data['elevation_ls'] = data['direction'].map(elevation_mapping)
     data['azimuth_ls'] = 0.0
     data['elevation_diff'] = data['elevation'] - data['elevation_ls']
-    data = data.apply(lambda x: x.str.replace('\t', '') if x.dtype == "object" else x)
+    data = data.apply(lambda x: x.astype(str).str.replace('\t', '') if x.dtype == "object" else x)
+    data['midi_note'] = data['midi_note'].astype(int)
     data['midi_bin'] = ''
     data['frequency_bin'] = ''
-    data = data.reset_index()
+    data = data.reset_index(drop=True)
     for index, row in data.iterrows():
         if 55 <= row['midi_note'] <= 57:
             data.loc[index, 'midi_bin'] = 56
@@ -53,12 +52,12 @@ def create_dataframe(RESULTS_DIR):
             data.loc[index, 'midi_bin'] = 107
         data.loc[index, 'frequency_bin'] = round(notetofreq(int(data.loc[index, 'midi_bin'])))
     data['interval'] = data.apply(lambda row:
-                                  numpy.nan if row['idx'] == 0
-                                  else round((row['frequency_bin'] / data.loc[row.name - 1, 'frequency_bin']),2),
+                                  numpy.nan if row.name == 0
+                                  else round(row['frequency_bin'] / data.loc[row.name - 1, 'frequency_bin'], 2),
                                   axis=1)
     data.to_csv(f'{RESULTS_DIR}/data.csv', index=False)
 
-
+'''
 # Plot - slopes
 data = pandas.read_csv(f'{RESULTS_DIR}/data.csv')
 sub_data = data[data['subject']==subject]
@@ -120,7 +119,7 @@ plt.title('Slope of Perceived Elevation vs Frequency by Direction and Condition'
 plt.tight_layout()
 plt.show()
 
-
+'''
 # == FILTER DATA FOR SINGLE PARTICIPANT
 def plot_boxplot(subject):
     data = pandas.read_csv(f'{RESULTS_DIR}/data.csv')
