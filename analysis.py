@@ -4,7 +4,8 @@ import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 import statsmodels.api as sm
-from utils import notetofreq
+from utils import notetofreq, create_dataframe
+from sklearn.linear_model import LinearRegression
 
 # ====== DIRECTORIES
 
@@ -20,49 +21,96 @@ elevation_mapping = {21 : 25.0,
                      24 : -12.5,
                      25 : -25.0}
 
-# ====== CREATE A BIG DATAFRAME
+# ====== CREATE MAIN DATAFRAME
 
-def create_dataframe(RESULTS_DIR):
-    subjects = [f for f in os.listdir(RESULTS_DIR) if f.startswith('sub')]
-    dfs = []
-    for subject in subjects:
-        dir = f'{RESULTS_DIR}/{subject}'
-        files = os.listdir(dir)
-        for file in files:
-            temp_data = pandas.read_csv(f'{dir}/{file}', sep=',')
-            dfs.append(temp_data)
+create_dataframe(RESULTS_DIR, elevation_mapping)
 
-    data = pandas.concat(dfs)
-    data['elevation_ls'] = data['direction'].map(elevation_mapping)
-    data['azimuth_ls'] = 0.0
-    data['elevation_diff'] = data['elevation'] - data['elevation_ls']
-    data = data.apply(lambda x: x.astype(str).str.replace('\t', '') if x.dtype == "object" else x)
-    data['midi_note'] = data['midi_note'].astype(int)
-    data['midi_bin'] = ''
-    data['frequency_bin'] = ''
-    data = data.reset_index(drop=True)
-    for index, row in data.iterrows():
-        if 55 <= row['midi_note'] <= 57:
-            data.loc[index, 'midi_bin'] = 56
-        elif 72 <= row['midi_note'] <= 74:
-            data.loc[index, 'midi_bin'] = 73
-        elif 89 <= row['midi_note'] <= 91:
-            data.loc[index, 'midi_bin'] = 90
-        elif 106 <= row['midi_note'] <= 108:
-            data.loc[index, 'midi_bin'] = 107
-        data.loc[index, 'frequency_bin'] = round(notetofreq(int(data.loc[index, 'midi_bin'])))
-    data['interval'] = data.apply(lambda row:
-                                  numpy.nan if row.name == 0
-                                  else round(row['frequency_bin'] / data.loc[row.name - 1, 'frequency_bin'], 2),
-                                  axis=1)
-    data.to_csv(f'{RESULTS_DIR}/data.csv', index=False)
-
-'''
-# Plot - slopes
+# ====== DOWNLOAD DATA
 data = pandas.read_csv(f'{RESULTS_DIR}/data.csv')
+
+subject = ...
 sub_data = data[data['subject']==subject]
+
+# ------- 1. ABSOLUTE EFFECT
+elevation_frequency = data.groupby(['condition', 'subject', 'frequency_bin']).mean('elevation_diff')
+elevation_frequency = elevation_frequency.reset_index()
+
+g = sns.FacetGrid(elevation_frequency, col="condition", col_wrap=2)
+g.map(sns.boxplot, "frequency_bin", "elevation_diff", fill=False, color='black')
+g.map(sns.swarmplot, "frequency_bin", "elevation_diff")
+g.add_legend()
+
+# ---- 1.1. Calculate the slope
+results = []
+
+for subject in data['subject'].unique():
+    temp_data = data[data['subject']==subject]
+
+    for condition in temp_data['condition'].unique():
+        cond_data = temp_data[temp_data['condition']==condition]
+
+        freq = cond_data['frequency_bin'].to_numpy().reshape((-1,1))
+        elevation = cond_data['elevation_diff'].to_numpy()
+
+        model = LinearRegression().fit(freq, elevation)
+        [slope] = model.coef_
+
+        results.append({
+            'subject': subject,
+            'condition': condition,
+            'slope': slope
+        })
+
+elevation_slopes = pandas.DataFrame(results)
+
+# ----- PLOT the SLOPE
+f, ax = plt.subplots()
+sns.boxplot(data=elevation_slopes, x='condition', y='slope', fill=False, color='black')
+sns.swarmplot(data=elevation_slopes, x='condition', y='slope')
+
+
+# ------- 2. RELATIVE EFFECT
+elevation_interval = data.groupby(['condition', 'subject', 'interval']).mean('elevation_diff')
+elevation_interval = elevation_interval.reset_index()
+
+g = sns.FacetGrid(elevation_interval, col="condition", col_wrap=2)
+g.map(sns.boxplot, "interval", "elevation_diff", fill=False, color='black')
+g.map(sns.swarmplot, "interval", "elevation_diff")
+g.add_legend()
+
+# ------- 3. EFFECT of TIMBRE
+elevation_timbre = data.groupby(['condition', 'subject']).mean('elevation_diff')
+elevation_timbre = elevation_timbre.reset_index()
+
+sns.boxplot(data=data, x='condition', y='elevation_diff')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 plt.figure(figsize=(12, 6))
-g = sns.lmplot(x='frequency_bin', y='elevation', hue='condition', data=sub_data, height=6, aspect=2)
+g = sns.lmplot(x='frequency_bin', y='elevation', hue='condition', data=data, height=6, aspect=2)
 g.set_axis_labels('Frequency (Hz)', 'Perceived Elevation (degrees)')
 plt.show()
 plt.savefig(f'{PLOT_DIR}/pratts_effect_plot.svg')
@@ -70,17 +118,15 @@ plt.savefig(f'{PLOT_DIR}/pratts_effect_plot.svg')
 
 # Plot - boxplot
 plt.figure(figsize=(12, 6))
-sns.boxplot(x='frequency_bin', y='elevation', hue='condition', data=sub_data)
+sns.boxplot(x='frequency_bin', y='elevation', hue='condition', data=data)
 plt.xlabel('Frequency (Hz)')
 plt.ylabel('Perceived Elevation (degrees)')
 plt.title('Boxplot of Elevation by Frequency Bin and Condition')
 plt.show()
 plt.savefig(f'{PLOT_DIR}/pratts_effect_boxplot.svg')
 
-data_grouped = data.groupby(['condition', 'frequency_bin']).mean('elevation_diff')
-
 plt.figure(figsize=(12, 6))
-sns.boxplot(x='interval', y='elevation_diff', data=data[data['condition']=='flute'])
+sns.boxplot(x='interval', y='elevation_diff', data=data[data['condition']=='viola'])
 plt.xlabel('Interval')
 plt.ylabel('Perceived Elevation (degrees)')
 plt.title('Boxplot of Elevation by Interval and Condition')
@@ -119,7 +165,7 @@ plt.title('Slope of Perceived Elevation vs Frequency by Direction and Condition'
 plt.tight_layout()
 plt.show()
 
-'''
+
 # == FILTER DATA FOR SINGLE PARTICIPANT
 def plot_boxplot(subject):
     data = pandas.read_csv(f'{RESULTS_DIR}/data.csv')

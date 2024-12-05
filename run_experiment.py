@@ -1,11 +1,11 @@
 from pratt_exp import load_parameters, load_processors, load_tones, run_pratt
-#from analysis import create_dataframe, plot_boxplot, plot_slope
+from utils import create_dataframe,plot_results_single_participant
 
 ### INSERT PARTICIPANT'S NUMBER HERE
 subject = 'sub06-pilot'
 
 ### LOAD PARAMETERS
-DIR, STIM_DIR, RESULTS_DIR, samplerate, table = load_parameters(subject)
+DIR, STIM_DIR, RESULTS_DIR, PLOT_DIR, samplerate, table = load_parameters(subject)
 
 ### LOAD STIMULI - ABSOLUTE MEASURES
 step, shuffled_pairs, conditions = load_tones(STIM_DIR)
@@ -27,7 +27,6 @@ for cond_index, condition in enumerate(conditions):
 
 
 ### PLOT THE RESULTS
-# create_dataframe(RESULTS_DIR)
-# plot_slope(subject)
-# plot_boxplot(subject)
+create_dataframe(RESULTS_DIR)
+plot_results_single_participant(subject, RESULTS_DIR, PLOT_DIR)
 

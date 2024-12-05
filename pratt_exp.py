@@ -14,11 +14,12 @@ def load_parameters(subject):
     DIR = os.getcwd()
     STIM_DIR = f'{DIR}/stimuli'
     RESULTS_DIR = f'{DIR}/Results'
+    PLOT_DIR = f'{DIR}/plots'
     samplerate = 44828
     table = slab.ResultsTable(subject=subject,
                               columns='timestamp, subject, condition, cond_index, idx, midi_note, frequency, direction, interval, azimuth, elevation')
 
-    return DIR, STIM_DIR, RESULTS_DIR, samplerate, table
+    return DIR, STIM_DIR, RESULTS_DIR, PLOT_DIR, samplerate, table
 
 # =========== SET-UP
 def load_processors(DIR):
