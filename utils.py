@@ -3,7 +3,9 @@ from mido import MidiFile
 import pandas
 import random
 import slab
-import numpy as np
+import numpy
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 # ====== DIRS AND PARAMS
 
@@ -156,7 +158,8 @@ def plot_results_single_participant(subject, RESULTS_DIR, PLOT_DIR):
     freq_order = sorted(elevation_frequency['frequency_bin'].unique())  # Adjust sorting if needed
 
     g = sns.FacetGrid(elevation_frequency, col="condition", col_wrap=2)
-    g.map(sns.boxplot, "frequency_bin", "elevation_diff", fill=False, color='black', order=freq_order)
+    g.map(sns.boxplot, "frequency_bin", "elevation_diff", color='black', order=freq_order,
+          boxprops=dict(facecolor='white', color='black'))
     g.map(sns.swarmplot, "frequency_bin", "elevation_diff", order=freq_order)
     g.add_legend()
     g.savefig(f"{PLOT_DIR}/{subject}_absolute_effect.svg", dpi=300)
@@ -170,7 +173,7 @@ def plot_results_single_participant(subject, RESULTS_DIR, PLOT_DIR):
     interval_order = sorted(elevation_interval['interval'].unique())  # Adjust sorting if needed
 
     g = sns.FacetGrid(elevation_interval, col="condition", col_wrap=2)
-    g.map(sns.boxplot, "interval", "elevation_diff", fill=False, color='black', order=interval_order)
+    g.map(sns.boxplot, "interval", "elevation_diff", color='black', order=interval_order)
     g.map(sns.swarmplot, "interval", "elevation_diff", order=interval_order)
     g.add_legend()
     g.savefig(f"{PLOT_DIR}/{subject}_relative_effect.svg", dpi=300)

@@ -50,7 +50,7 @@ def run_pratt(subject, shuffled_pairs, proc_list, table, step, condition, STIM_D
     stims = shuffled_pairs[condition]
 
     print('#################\n## CALIBRATION ## \n#################')
-    freefield.calibrate_sensor(led_feedback=True, button_control=True)  # sensor calibration
+    freefield.calibrate_sensor(led_feedback=True, button_control='processor')  # sensor calibration
     print('#####################\nCALIBRATION COMPLETED\n#####################')
 
     input("Do you want to continue? (PRESS ENTER): ")
