@@ -2,7 +2,7 @@ from pratt_exp import load_parameters, load_processors, load_tones, run_pratt
 from utils import create_dataframe,plot_results_single_participant
 
 ### INSERT PARTICIPANT'S NUMBER HERE
-subject = 'sub02'
+subject = 'sub03'
 
 ### LOAD PARAMETERS
 DIR, STIM_DIR, RESULTS_DIR, PLOT_DIR, samplerate, table = load_parameters(subject)
@@ -15,15 +15,7 @@ proc_list, directions = load_processors(DIR)
 
 ### RUN *EXPERIMENT 1* - absolute measures
 
-for cond_index, condition in enumerate(conditions):
-    run_pratt(subject, shuffled_pairs, proc_list, table, step, condition, STIM_DIR, cond_index)
 
-    print(f'END OF THE BLOCK - {condition}')
-    print('Its time for a break')
-    inp = input('Do you want to continue? (y/n)')
-
-    if inp == 'n':
-        break
 
 
 ### PLOT THE RESULTS
