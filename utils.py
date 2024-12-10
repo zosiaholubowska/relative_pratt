@@ -15,6 +15,12 @@ PLOT_DIR = f'{DIR}/plots'
 
 files = [f for f in os.listdir(STIM_DIR) if '.mid' in f]
 
+elevation_mapping = {21 : 25.0,
+                     22 : 12.5,
+                     23 : 0.0,
+                     24 : -12.5,
+                     25 : -25.0}
+
 # ====== FUNCTIONS
 
 def notetofreq(note):
