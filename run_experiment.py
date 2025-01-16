@@ -2,7 +2,7 @@ from pratt_exp import load_parameters, load_processors, load_tones, run_pratt
 from utils import create_dataframe,plot_results_single_participant
 
 ### INSERT PARTICIPANT'S NUMBER HERE
-subject = 'sub04'
+subject = 'sub06'
 
 ### LOAD PARAMETERS
 DIR, STIM_DIR, RESULTS_DIR, PLOT_DIR, samplerate, table = load_parameters(subject)
@@ -27,6 +27,11 @@ for cond_index, condition in enumerate(conditions):
 
 
 ### PLOT THE RESULTS
+elevation_mapping = {21 : 25.0,
+                     22 : 12.5,
+                     23 : 0.0,
+                     24 : -12.5,
+                     25 : -25.0}
 create_dataframe(RESULTS_DIR, elevation_mapping)
 plot_results_single_participant(subject, RESULTS_DIR, PLOT_DIR)
 
