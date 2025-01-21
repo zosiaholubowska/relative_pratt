@@ -1,0 +1,2 @@
+timestamp,subject,condition,cond_index,idx,midi_note,frequency,direction,interval,azimuth,elevation
+2025-01-10 13:56:26.122146,	sub05,	flute,	0,	0,	73,	554.3652619537442,	22,	NA,	40.853424072265625,	7.124988555908203
