@@ -105,10 +105,10 @@ def create_sound(frequency, midi_note, duration, condition, STIM_DIR):
         sound = sound.ramp(duration=0.01)
     elif condition == 'viola':
         sound = slab.Sound(f'{STIM_DIR}/tones/viola/stim_{int(midi_note)}_viola.wav')
-        sound = sound.ramp(duration=0.01)
+        sound = sound.ramp(duration=0.05)
     elif condition == 'flute':
         sound = slab.Sound(f'{STIM_DIR}/tones/flute/stim_{int(midi_note)}_flute.wav')
-        sound = sound.ramp(duration=0.01)
+        sound = sound.ramp(duration=0.05)
 
     return sound
 
