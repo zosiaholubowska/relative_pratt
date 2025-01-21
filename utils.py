@@ -21,6 +21,8 @@ elevation_mapping = {21 : 25.0,
                      24 : -12.5,
                      25 : -25.0}
 
+# TODO resample everything at 48828
+
 # ====== FUNCTIONS
 
 def notetofreq(note):
@@ -109,7 +111,7 @@ def create_sound(frequency, midi_note, duration, condition, STIM_DIR):
     elif condition == 'flute':
         sound = slab.Sound(f'{STIM_DIR}/tones/flute/stim_{int(midi_note)}_flute.wav')
         sound = sound.ramp(duration=0.05)
-
+    sound = slab.Sound(sound.data.mean(axis=1)) #courtesy to herr pilaszanovich
     return sound
 
 def create_dataframe(RESULTS_DIR, elevation_mapping):
