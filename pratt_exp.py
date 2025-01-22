@@ -69,7 +69,7 @@ def run_pratt(subject, shuffled_pairs, proc_list, table, step, condition, STIM_D
         print(f'Loudspeaker| {direction}\nMIDI note| {midi_note}')
         # === CREATE THE SOUND
         sound = create_sound(frequency=frequency, midi_note=midi_note, duration=duration, condition=condition, STIM_DIR=STIM_DIR)
-        sound.level = 80 if condition != "complex" else 70
+        sound.level = 75 #if condition != "complex" else 70
 
         # === WRITE THE LOUDSPEAKER ON THE PROCESSOR
         [curr_speaker] = freefield.pick_speakers(direction)
