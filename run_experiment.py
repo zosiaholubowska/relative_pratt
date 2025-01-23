@@ -2,7 +2,7 @@ from pratt_exp import load_parameters, load_processors, load_tones, run_pratt
 from utils import create_dataframe,plot_results_single_participant
 
 ### INSERT PARTICIPANT'S NUMBER HERE
-subject = 'sub00-pilot'
+subject = 'sub09'
 
 ### LOAD PARAMETERS
 DIR, STIM_DIR, RESULTS_DIR, PLOT_DIR, samplerate, table = load_parameters(subject)
