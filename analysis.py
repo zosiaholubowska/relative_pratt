@@ -27,7 +27,7 @@ create_dataframe(RESULTS_DIR, elevation_mapping)
 
 # ====== DOWNLOAD DATA
 data = pandas.read_csv(f'{RESULTS_DIR}/data.csv')
-
+data = data[~data['subject'].str.contains('pilot')]
 subject = ...
 sub_data = data[data['subject']==subject]
 

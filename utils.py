@@ -188,4 +188,33 @@ def plot_results_single_participant(subject, RESULTS_DIR, PLOT_DIR):
     plt.show()
 
 
+def get_acoustic_features(conditions, features, TONE_DIR):
+
+    results_list = []
+
+    for feature in features:
+        results_dict = {'condition': [], 'stimulus': [], 'feature': [], 'value': []}
+
+        for condition in conditions:
+            sound_path = f'{TONE_DIR}/{condition}'
+
+            values_dict = slab.sound.apply_to_path(
+                sound_path,
+                slab.Sound.spectral_feature,
+                {'feature': feature, 'mean': 'rms'}
+            )
+
+            for stimulus, values in values_dict.items():
+                results_dict['condition'].extend([condition] * len(values))
+                results_dict['stimulus'].extend([stimulus] * len(values))
+                results_dict['feature'].extend([feature] * len(values))
+                results_dict['value'].extend(values)
+
+            df = pandas.DataFrame(results_dict)
+            results_list.append(df)
+    acoustic_features_df = pandas.concat(results_list)
+
+    return acoustic_features_df
+
+
 
