@@ -35,10 +35,13 @@ sub_data = data[data['subject']==subject]
 elevation_frequency = data.groupby(['condition', 'subject', 'frequency_bin']).mean('elevation_diff')
 elevation_frequency = elevation_frequency.reset_index()
 
-g = sns.FacetGrid(elevation_frequency, col="condition", col_wrap=2)
+g = sns.FacetGrid(elevation_frequency, col="condition", col_wrap=3)
 g.map(sns.boxplot, "frequency_bin", "elevation_diff", fill=False, color='black')
 g.map(sns.swarmplot, "frequency_bin", "elevation_diff")
+g.set_axis_labels("Frequency (Hz)", "Elevation difference")
 g.add_legend()
+plt.show()
+g.savefig(f'{PLOT_DIR}/absolute_effect.png', dpi=300)
 
 # ---- 1.1. Calculate the slope
 results = []
@@ -73,10 +76,13 @@ sns.swarmplot(data=elevation_slopes, x='condition', y='slope')
 elevation_interval = data.groupby(['condition', 'subject', 'interval']).mean('elevation_diff')
 elevation_interval = elevation_interval.reset_index()
 
-g = sns.FacetGrid(elevation_interval, col="condition", col_wrap=2)
+g = sns.FacetGrid(elevation_interval, col="condition", col_wrap=3)
 g.map(sns.boxplot, "interval", "elevation_diff", fill=False, color='black')
 g.map(sns.swarmplot, "interval", "elevation_diff")
+g.set_axis_labels("Frequency ratio", "Elevation difference")
 g.add_legend()
+plt.show()
+g.savefig(f'{PLOT_DIR}/relative_effect.png', dpi=300)
 
 # ------- 3. EFFECT of TIMBRE
 elevation_timbre = data.groupby(['condition', 'subject']).mean('elevation_diff')
