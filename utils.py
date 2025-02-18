@@ -92,7 +92,7 @@ def shuffle_pairs(pairs):
     return temp_pairs
 
 
-def create_sound(frequency, midi_note, duration, condition, STIM_DIR):
+def create_sound(frequency, midi_note, duration, condition, STIM_DIR, viola_harmonic):
     if condition == 'pure_tone':
         sound = slab.Sound.tone(frequency=frequency, duration=duration)
         sound = sound.ramp(duration=0.01)
@@ -111,6 +111,17 @@ def create_sound(frequency, midi_note, duration, condition, STIM_DIR):
     elif condition == 'flute':
         sound = slab.Sound(f'{STIM_DIR}/tones/flute/stim_{int(midi_note)}_flute.wav')
         sound = sound.ramp(duration=0.05)
+    elif condition == 'viola_complex':
+        harmonic_complex = slab.Sound.silence(duration=duration)
+        freq_peaks = viola_harmonic[midi_note]['freq_peaks']
+        amplitude = viola_harmonic[midi_note]['amplitude']
+        # Loop through frequencies and corresponding amplitude levels
+        for freq, amp in zip(freq_peaks, amplitude):
+            tone = slab.Sound.tone(frequency=freq, duration=1.0)
+            tone.level = 75 + amp  # Set the amplitude level
+            harmonic_complex += tone
+
+        sound = harmonic_complex
     sound = slab.Sound(sound.data.mean(axis=1)) #courtesy to herr pilaszanovich
     return sound
 

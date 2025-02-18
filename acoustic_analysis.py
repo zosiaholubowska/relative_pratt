@@ -6,6 +6,7 @@ import seaborn as sns
 import statsmodels.api as sm
 from librosa import amplitude_to_db
 
+from simulated_data import midi_note
 from utils import notetofreq, create_dataframe
 from sklearn.linear_model import LinearRegression
 import slab
@@ -81,6 +82,8 @@ import librosa.display
 from scipy.signal import find_peaks
 import time
 import slab
+import pickle
+import re
 
 slab.set_default_samplerate(44828)
 
@@ -145,8 +148,16 @@ def analyze_harmonics(direction, condition, midi_note):
 
     return frequencies[peaks], amplitudes_db
 
+viola_harmonic = {}
 
-freq_peaks, amplitude_to_db = analyze_harmonics(TONE_DIR, 'viola', 100)
+for tone in viola_tones:
+    midi_note = int(re.search(r'stim_(\d+)_viola', tone).group(1))
+    freq_peaks, amplitude_to_db = analyze_harmonics(TONE_DIR, 'viola', midi_note)
+    viola_harmonic[midi_note] = {'freq_peaks': freq_peaks, 'amplitude': amplitude_to_db}
+
+# Save the dictionary as a pickle file
+with open(f'{TONE_DIR}/viola_harmonic.pkl', 'wb') as file:
+    pickle.dump(viola_harmonic, file)
 
 harmonic_complex = slab.Sound.silence(duration=1.0)
 
