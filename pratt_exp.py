@@ -37,16 +37,19 @@ def load_processors(DIR):
 def load_tones(STIM_DIR):
     step = 90
 
-    conditions = ['complex', 'viola', 'flute']
+    conditions = ['viola_complex', 'viola', 'flute']
     random.shuffle(conditions)
 
     with open(f'{STIM_DIR}/shuffled_pairs.pickle', 'rb') as f:
         shuffled_pairs = pickle.load(f)
 
-    return step, shuffled_pairs, conditions
+    with open(f'{STIM_DIR}/tones/viola_harmonic.pkl', 'rb') as file:
+        viola_harmonic = pickle.load(file)
+
+    return step, shuffled_pairs, conditions, viola_harmonic
 
 ### ========== ABSOLUTE MEASURES
-def run_pratt(subject, shuffled_pairs, proc_list, table, step, condition, STIM_DIR, cond_index):
+def run_pratt(subject, shuffled_pairs, proc_list, table, step, condition, STIM_DIR, cond_index, viola_harmonic):
     stims = shuffled_pairs[condition]
 
     print('#################\n## CALIBRATION ## \n#################')
@@ -68,7 +71,7 @@ def run_pratt(subject, shuffled_pairs, proc_list, table, step, condition, STIM_D
         direction = stim[1]
         print(f'Loudspeaker| {direction}\nMIDI note| {midi_note}')
         # === CREATE THE SOUND
-        sound = create_sound(frequency=frequency, midi_note=midi_note, duration=duration, condition=condition, STIM_DIR=STIM_DIR)
+        sound = create_sound(frequency=frequency, midi_note=midi_note, duration=duration, condition=condition, STIM_DIR=STIM_DIR, viola_harmonic=viola_harmonic)
         sound.level = 75 #if condition != "complex" else 70
 
         # === WRITE THE LOUDSPEAKER ON THE PROCESSOR

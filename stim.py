@@ -1,6 +1,5 @@
 import pandas
 import os
-import json
 from utils import separate_melodies, notetofreq, shuffle_pairs
 import copy
 import pickle
@@ -43,7 +42,7 @@ with open(f'{STIM_DIR}/tones_sequence.pickle', 'wb') as fp:
 
 # SHUFFLED SEQUENCE
 
-conditions = ['complex', 'viola', 'flute']
+conditions = ['viola_complex', 'viola', 'flute']
 shuffled_pairs = {}
 for condition in conditions:
     shuffled_pairs[condition] = shuffle_pairs(pairs)
