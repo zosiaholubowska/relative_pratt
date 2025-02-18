@@ -84,6 +84,11 @@ import slab
 
 slab.set_default_samplerate(44828)
 
+DIR = os.getcwd()
+RESULTS_DIR = f'{DIR}/Results'
+PLOT_DIR = f'{DIR}/plots'
+TONE_DIR = f'{DIR}/stimuli/tones'
+
 viola_tones = [f for f in os.listdir(f'{TONE_DIR}/viola') if 'stim' in f]
 flute_tones = [f for f in os.listdir(f'{TONE_DIR}/flute') if 'stim' in f]
 complex_tones = [f for f in os.listdir(f'{TONE_DIR}/harmoniccomplex') if 'stim' in f]
@@ -113,7 +118,7 @@ def analyze_harmonics(direction, condition, midi_note):
     magnitude = np.abs(fft_spectrum)
 
     # Find harmonic frequencies
-    peaks, _ = find_peaks(magnitude[:len(magnitude) // 2], distance=350, height=0.05 * np.max(magnitude))
+    peaks, _ = find_peaks(magnitude[:len(magnitude) // 2], distance=450, height=0.05 * np.max(magnitude))
     harmonic_frequencies = frequencies[peaks]
 
     # Plot the frequency spectrum
@@ -141,7 +146,7 @@ def analyze_harmonics(direction, condition, midi_note):
     return frequencies[peaks], amplitudes_db
 
 
-freq_peaks, amplitude_to_db = analyze_harmonics(TONE_DIR, 'viola', 108)
+freq_peaks, amplitude_to_db = analyze_harmonics(TONE_DIR, 'viola', 100)
 
 harmonic_complex = slab.Sound.silence(duration=1.0)
 
