@@ -122,6 +122,7 @@ def create_sound(frequency, midi_note, duration, condition, STIM_DIR, viola_harm
             harmonic_complex += tone
 
         sound = harmonic_complex
+        sound = sound.ramp(duration=0.05)
     sound = slab.Sound(sound.data.mean(axis=1)) #courtesy to herr pilaszanovich
     return sound
 
