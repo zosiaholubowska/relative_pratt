@@ -8,6 +8,7 @@ import pickle
 from utils import shuffle_pairs, notetofreq, create_sound
 from datetime import datetime
 import re
+slab.set_default_samplerate(44828)
 
 # ========== DIRS AND PARAMS
 def load_parameters(subject):
@@ -16,6 +17,7 @@ def load_parameters(subject):
     RESULTS_DIR = f'{DIR}/Results'
     PLOT_DIR = f'{DIR}/plots'
     samplerate = 44828
+
     table = slab.ResultsTable(subject=subject,
                               columns='timestamp, subject, condition, cond_index, idx, midi_note, frequency, direction, interval, azimuth, elevation')
 
