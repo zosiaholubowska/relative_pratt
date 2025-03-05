@@ -216,6 +216,8 @@ def get_acoustic_features(conditions, features, TONE_DIR):
                 {'feature': feature, 'mean': 'rms'}
             )
 
+            values_dict = {key: [sum(values) / len(values)] for key, values in values_dict.items()}
+
             for stimulus, values in values_dict.items():
                 results_dict['condition'].extend([condition] * len(values))
                 results_dict['stimulus'].extend([stimulus] * len(values))
