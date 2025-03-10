@@ -1,37 +1,57 @@
-import pandas
-import numpy
 import os
 import matplotlib.pyplot as plt
 import seaborn as sns
-import statsmodels.api as sm
 from librosa import amplitude_to_db
-
-from simulated_data import midi_note
-from utils import notetofreq, create_dataframe
-from sklearn.linear_model import LinearRegression
-import slab
 from utils import notetofreq, get_acoustic_features
+import slab
+import numpy
+import pickle
 import re
 
+slab.set_default_samplerate(44828)
 # ====== DIRECTORIES
 
 DIR = os.getcwd()
 RESULTS_DIR = f'{DIR}/Results'
 PLOT_DIR = f'{DIR}/plots'
 TONE_DIR = f'{DIR}/stimuli/tones'
+STIM_DIR = f'{DIR}/stimuli'
 
-conditions = ['flute', 'viola', 'harmoniccomplex']
+conditions = ['flute', 'viola', 'harmoniccomplex', 'viola_complex']
 
 # ====== Generate the complex tones
 
 """
 range = numpy.arange(55, 109)
-
+# harmonic complex
 for midi in range:
+    print(midi)
     freq = notetofreq(midi)
     duration = 1.0
     sound = slab.Sound.harmoniccomplex(f0=freq, duration=duration, amplitude=[0, -10, -20, -30, -40, -50, -60, -70])
+    sound = sound.ramp(duration=0.01)
     sound.write(filename=f'{TONE_DIR}/harmoniccomplex/stim_{midi}_harmonic.wav')
+# viola complex
+
+with open(f'{STIM_DIR}/tones/viola_harmonic.pkl', 'rb') as file:
+    viola_harmonic = pickle.load(file)
+
+for midi in range:
+    print(midi)
+    freq = notetofreq(midi)
+    duration = 1.0
+    harmonic_complex = slab.Sound.silence(duration=duration)
+    freq_peaks = viola_harmonic[midi]['freq_peaks']
+    amplitude = viola_harmonic[midi]['amplitude']
+    # Loop through frequencies and corresponding amplitude levels
+    for freq, amp in zip(freq_peaks, amplitude):
+        tone = slab.Sound.tone(frequency=freq, duration=1.0)
+        tone.level = 75 + amp  # Set the amplitude level
+        harmonic_complex += tone
+
+    sound = harmonic_complex
+    sound = sound.ramp(duration=0.05)
+    sound.write(filename=f'{TONE_DIR}/viola_complex/stim_{midi}_viola_complex.wav')
 """
 
 # ====== Compute spectral features:
