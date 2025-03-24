@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from librosa import amplitude_to_db
 from utils import notetofreq, get_acoustic_features
+from sklearn.linear_model import LinearRegression
 import slab
 import numpy
 import pickle
@@ -194,3 +195,43 @@ for freq, amp in zip(freq_peaks, amplitude_to_db):
 harmonic_complex.play()
 
 harmonic_complex.spectrum()
+
+
+
+#### Orthogonalise the acoustic features
+
+features = acoustic_features_df['feature'].unique()
+conditions = acoustic_features_df['condition'].unique()
+
+result_df = acoustic_features_df.copy()
+result_df['value_ortho'] = None
+
+features_to_orthogonalize = ['centroid', 'rolloff']
+
+for condition in conditions:
+    for feature in features_to_orthogonalize:
+
+        mask = (result_df['condition'] == condition) & (result_df['feature'] == feature)
+
+        # Skip if no data for this combination
+        if not any(mask):
+            continue
+
+        # Get the subset of data
+        subset = result_df.loc[mask].copy()
+
+        # Prepare the data for regression
+        X = subset['frequency'].values.reshape(-1, 1)
+        y = subset['value'].values
+
+        # Perform regression and calculate residuals
+        model = LinearRegression()
+        model.fit(X, y)
+        y_pred = model.predict(X)
+        orthogonalized = y - y_pred
+
+        # Store the orthogonalized values
+        result_df.loc[mask, 'value_ortho'] = orthogonalized
+
+
+result_df.to_csv(f'{RESULTS_DIR}/acoustic_features_orthogonalised.csv')

@@ -6,6 +6,7 @@ import slab
 import numpy
 import seaborn as sns
 import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
 
 # ====== DIRS AND PARAMS
 
@@ -229,6 +230,9 @@ def get_acoustic_features(conditions, features, TONE_DIR):
     acoustic_features_df = pandas.concat(results_list)
 
     return acoustic_features_df
+
+
+
 
 
 
