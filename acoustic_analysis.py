@@ -235,3 +235,96 @@ for condition in conditions:
 
 
 result_df.to_csv(f'{RESULTS_DIR}/acoustic_features_orthogonalised.csv')
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+import pandas as pd
+
+# Set the style
+plt.style.use('seaborn-v0_8-whitegrid')
+sns.set_context("notebook", font_scale=1.2)
+
+# Create a figure with subplots
+fig, axes = plt.subplots(2, len(conditions), figsize=(5 * len(conditions), 10), sharey='row')
+
+# If there's only one condition, wrap axes in a list for consistent indexing
+if len(conditions) == 1:
+    axes = np.array([[axes[0]], [axes[1]]])
+
+# Plot for each condition
+for i, condition in enumerate(conditions):
+    # Get condition data where feature is centroid
+    condition_data = result_df[(result_df['condition'] == condition) &
+                               (result_df['feature'] == 'centroid')]
+
+    # Original centroid vs frequency
+    ax_top = axes[0, i]
+    sns.scatterplot(
+        x='frequency',
+        y='value',
+        data=condition_data,
+        alpha=0.7,
+        color='blue',
+        ax=ax_top
+    )
+
+    # Add regression line to show relationship
+    x = condition_data['frequency'].values
+    y = condition_data['value'].values
+
+    # Add regression line only if there are enough data points
+    if len(x) > 1:
+        z = np.polyfit(x, y, 1)
+        p = np.poly1d(z)
+        ax_top.plot(x, p(x), 'r--', alpha=0.8)
+
+    # Calculate correlation coefficient safely
+    try:
+        # Filter out NaN values
+        valid_data = condition_data.dropna(subset=['frequency', 'value'])
+        if len(valid_data) > 1:  # Ensure there are at least 2 points
+            corr = np.corrcoef(valid_data['frequency'], valid_data['value'])[0, 1]
+            corr_text = f'r = {corr:.2f}'
+        else:
+            corr_text = 'insufficient data'
+    except:
+        corr_text = 'correlation error'
+
+    ax_top.set_title(f'{condition}: Original Centroid \n{corr_text}')
+    ax_top.set_xlabel('Frequency (Hz)')
+    ax_top.set_ylabel('Centroid (Hz)')
+
+    # Orthogonalized centroid vs frequency
+    ax_bottom = axes[1, i]
+    sns.scatterplot(
+        x='frequency',
+        y='value_ortho',
+        data=condition_data,
+        alpha=0.7,
+        color='green',
+        ax=ax_bottom
+    )
+
+    # Add horizontal line at y=0 to show mean of orthogonalized values
+    ax_bottom.axhline(y=0, color='r', linestyle='--', alpha=0.8)
+
+    # Calculate correlation coefficient for orthogonalized values safely
+    try:
+        # Filter out NaN values
+        valid_data = condition_data.dropna(subset=['frequency', 'value_ortho'])
+        if len(valid_data) > 1:  # Ensure there are at least 2 points
+            corr_ortho = valid_data['frequency'].corr(valid_data['value_ortho'])
+            corr_text = f'r = {corr_ortho:.2f}'
+        else:
+            corr_text = 'insufficient data'
+    except:
+        corr_text = 'correlation error'
+
+    ax_bottom.set_title(f'{condition}: Orthogonalized\n{corr_text}')
+    ax_bottom.set_xlabel('Frequency (Hz)')
+    ax_bottom.set_ylabel('Orthogonalized Centroid')
+
+plt.tight_layout()
+plt.show()
+plt.savefig(f'{PLOT_DIR}/stimuli/original_orthogonalised_centroid.png', dpi=300)

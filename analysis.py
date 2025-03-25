@@ -28,8 +28,39 @@ create_dataframe(RESULTS_DIR, elevation_mapping)
 # ====== DOWNLOAD DATA
 data = pandas.read_csv(f'{RESULTS_DIR}/data.csv')
 data = data[~data['subject'].str.contains('pilot')]
-subject = ...
-sub_data = data[data['subject']==subject]
+
+acoustic_features_temp = pandas.read_csv(f'{RESULTS_DIR}/acoustic_features_orthogonalised.csv', index_col=0)
+
+acoustic_features = acoustic_features_temp.pivot(columns='feature', values='value_ortho')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # ------- 1. ABSOLUTE EFFECT
 elevation_frequency = data.groupby(['condition', 'subject', 'frequency_bin']).mean('elevation_diff')

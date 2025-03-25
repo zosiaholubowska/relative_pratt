@@ -206,11 +206,11 @@ def get_acoustic_features(conditions, features, TONE_DIR):
     results_list = []
 
     for feature in features:
-        results_dict = {'condition': [], 'stimulus': [], 'feature': [], 'value': []}
+
 
         for condition in conditions:
             sound_path = f'{TONE_DIR}/{condition}'
-
+            results_dict = {'condition': [], 'stimulus': [], 'feature': [], 'value': []}
             values_dict = slab.sound.apply_to_path(
                 sound_path,
                 slab.Sound.spectral_feature,
@@ -227,6 +227,7 @@ def get_acoustic_features(conditions, features, TONE_DIR):
 
             df = pandas.DataFrame(results_dict)
             results_list.append(df)
+            del df
     acoustic_features_df = pandas.concat(results_list)
 
     return acoustic_features_df
