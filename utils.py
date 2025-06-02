@@ -135,6 +135,8 @@ def create_dataframe(RESULTS_DIR, elevation_mapping):
         files = [f for f in os.listdir(dir) if f.startswith('sub')]
         for file in files:
             temp_data = pandas.read_csv(f'{dir}/{file}', sep=',')
+            if subject == 'sub01' or subject == 'sub02':
+                temp_data['elevation'] = temp_data['elevation'] * -1
             dfs.append(temp_data)
 
     data = pandas.concat(dfs)
@@ -232,8 +234,40 @@ def get_acoustic_features(conditions, features, TONE_DIR):
 
     return acoustic_features_df
 
+# ====== Generate the complex tones
 
+"""
+range = numpy.arange(55, 109)
+# harmonic complex
+for midi in range:
+    print(midi)
+    freq = notetofreq(midi)
+    duration = 1.0
+    sound = slab.Sound.harmoniccomplex(f0=freq, duration=duration, amplitude=[0, -10, -20, -30, -40, -50, -60, -70])
+    sound = sound.ramp(duration=0.01)
+    sound.write(filename=f'{TONE_DIR}/harmoniccomplex/stim_{midi}_harmonic.wav')
+# viola complex
 
+with open(f'{STIM_DIR}/tones/viola_harmonic.pkl', 'rb') as file:
+    viola_harmonic = pickle.load(file)
+
+for midi in range:
+    print(midi)
+    freq = notetofreq(midi)
+    duration = 1.0
+    harmonic_complex = slab.Sound.silence(duration=duration)
+    freq_peaks = viola_harmonic[midi]['freq_peaks']
+    amplitude = viola_harmonic[midi]['amplitude']
+    # Loop through frequencies and corresponding amplitude levels
+    for freq, amp in zip(freq_peaks, amplitude):
+        tone = slab.Sound.tone(frequency=freq, duration=1.0)
+        tone.level = 75 + amp  # Set the amplitude level
+        harmonic_complex += tone
+
+    sound = harmonic_complex
+    sound = sound.ramp(duration=0.05)
+    sound.write(filename=f'{TONE_DIR}/viola_complex/stim_{midi}_viola_complex.wav')
+"""
 
 
 

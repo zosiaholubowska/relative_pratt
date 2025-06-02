@@ -1,0 +1,24 @@
+# Load all packages
+
+```{r}
+library(dbplyr)
+library(ggplot2)
+library(lme4)
+library(lmerTest)
+```
+
+# Load the data
+
+```{r}
+data_DIR = "~/Documents/PhD/3_experiment/relative_pratt/Results"
+plot_DIR = "~/Documents/PhD/3_experiment/relative_pratt/pots"
+data <- read.csv(file.path(data_DIR, "participants_data_with_acoustics.csv"), row.names = 1)
+```
+
+# Base model
+We want to confirm the Pratt's effect by predicting the elveation difference with f0.
+
+```{r}
+model_freq <- lmer(elevation_diff ~ frequency + (1|subject), data = data)
+summary(model_freq)
+```

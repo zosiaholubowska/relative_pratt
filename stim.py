@@ -123,3 +123,31 @@ with open(f'{STIM_DIR}/tones_sequence.pickle', 'wb') as fp:
 viola_tones = [f for f in os.listdir(f'{STIM_DIR}/tones/viola') if '.wav' in f]
 directions = [21, 22, 23, 24, 25]
 pairs = [(sound, speaker) for sound in piano_tones for speaker in directions]
+
+# ====== COMPILING CHORDS
+
+import slab
+
+STIM_DIR = f'{os.getcwd()}/stimuli/chords'
+
+midi_notes = [55,  56,  57,  72,  73,  74,  89,  90,  91, 106, 107, 108]
+duration = 1.0
+
+for midi in midi_notes:
+    frequency_1 = notetofreq(midi)
+    frequency_3 = notetofreq(midi+4)
+    frequency_5 = notetofreq(midi+7)
+    sound_1 = slab.Sound.tone(frequency=frequency_1, duration=duration)
+    sound_1 = sound_1.ramp(duration=0.01)
+    sound_3 = slab.Sound.tone(frequency=frequency_3, duration=duration)
+    sound_3 = sound_3.ramp(duration=0.01)
+    sound_5 = slab.Sound.tone(frequency=frequency_5, duration=duration)
+    sound_5 = sound_5.ramp(duration=0.01)
+
+    combined_sound = sound_1 + sound_3 + sound_5
+    combined_sound = combined_sound.ramp(duration=0.05)
+
+    combined_sound.write(f'{STIM_DIR}/harmonic/chord_{midi}.wav')
+
+
+

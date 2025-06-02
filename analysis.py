@@ -3,9 +3,11 @@ import numpy
 import os
 import matplotlib.pyplot as plt
 import seaborn as sns
-import statsmodels.api as sm
-from utils import notetofreq, create_dataframe
-from sklearn.linear_model import LinearRegression
+from utils import create_dataframe
+import statsmodels.formula.api as smf
+from scipy import stats
+from statsmodels.stats.multicomp import pairwise_tukeyhsd
+
 
 # ====== DIRECTORIES
 
@@ -23,239 +25,303 @@ elevation_mapping = {21 : 25.0,
 
 # ====== CREATE MAIN DATAFRAME
 
-create_dataframe(RESULTS_DIR, elevation_mapping)
+#create_dataframe(RESULTS_DIR, elevation_mapping)
 
 # ====== DOWNLOAD DATA
 data = pandas.read_csv(f'{RESULTS_DIR}/data.csv')
 data = data[~data['subject'].str.contains('pilot')]
+data = data[~data['subject'].str.contains('00')]
 
 acoustic_features_temp = pandas.read_csv(f'{RESULTS_DIR}/acoustic_features_orthogonalised.csv', index_col=0)
 
-acoustic_features = acoustic_features_temp.pivot(columns='feature', values='value_ortho')
+acoustic_features = acoustic_features_temp.pivot_table(
+    index=['stimulus', 'condition', 'midi', 'frequency'],
+    columns='feature',
+    values=['value_ortho_freq', 'value'],
+    aggfunc='first'
+).reset_index()
+acoustic_features.columns = ['_'.join(filter(None, col)) for col in acoustic_features.columns]
+
+acoustic_features['condition'] = acoustic_features['condition'].replace('harmoniccomplex', 'complex')
+
+# ====== MATCH THE DATA WITH ACOUSTIC FEATURES
+
+merged_data = data.merge(
+    acoustic_features,
+    left_on=['condition', 'midi_note'],
+    right_on=['condition', 'midi'],
+    how='left'
+)
+merged_data = merged_data.drop(columns=['frequency_y'])
+merged_data = merged_data.rename(columns={'frequency_x': 'frequency'})
+
+main_df = merged_data.copy()
+main_df['frequency'] = main_df['frequency'].round(0)
+main_df.to_csv(f'{RESULTS_DIR}/participants_data_with_acoustics.csv')
+
+del merged_data, data, acoustic_features, acoustic_features_temp
+
+# ====== BASE MODEL
+# We want to confirm the Pratt's effect by predicting the elevation difference with f0.
+# elevation_diff ~ frequency_bin
+
+model_freq = smf.mixedlm('elevation_diff ~ frequency', main_df, groups='subject')
+model_freq_fitted = model_freq.fit()
+print(model_freq_fitted.summary())
+
+# plot the results of the model
+
+plt.figure(figsize=(10, 6))
+sns.scatterplot(x='frequency', y='elevation_diff', data=main_df, alpha=0.3, color='lightblue')
+sns.regplot(x='frequency', y='elevation_diff', data=main_df, scatter=False, color='red')
+plt.xlabel('Frequency', fontsize=12)
+plt.ylabel('Elevation Difference', fontsize=12)
+plt.legend()
+
+# ====== CONDITION EFFECT
+
+model_cond = smf.mixedlm('elevation_diff ~ frequency * C(condition)', main_df, groups='subject')
+model_cond_fitted = model_cond.fit()
+print(model_cond_fitted.summary())
+
+# plot the results of the model
+
+plt.figure(figsize=(12, 10))
+plt.subplot(2, 1, 1)
+sns.pointplot(x='frequency', y='elevation_diff', hue='condition', data=main_df)
+plt.title('Elevation Difference vs. Frequency by Condition', fontsize=14)
+plt.xlabel('Frequency', fontsize=12)
+plt.ylabel('Elevation Difference', fontsize=12)
+plt.subplot(2, 1, 2)
+conditions = main_df['condition'].unique()
+for condition in conditions:
+    subset = main_df[main_df['condition'] == condition]
+    sns.regplot(x='frequency', y='elevation_diff', data=subset, scatter=False, label=f'{condition} Trend')
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# ------- 1. ABSOLUTE EFFECT
-elevation_frequency = data.groupby(['condition', 'subject', 'frequency_bin']).mean('elevation_diff')
-elevation_frequency = elevation_frequency.reset_index()
-
-g = sns.FacetGrid(elevation_frequency, col="condition", col_wrap=3)
-g.map(sns.boxplot, "frequency_bin", "elevation_diff", fill=False, color='black')
-g.map(sns.swarmplot, "frequency_bin", "elevation_diff")
-g.set_axis_labels("Frequency (Hz)", "Elevation difference")
-g.add_legend()
+plt.xlabel('Frequency', fontsize=12)
+plt.ylabel('Elevation Difference', fontsize=12)
+plt.legend(title='Condition')
+plt.tight_layout()
 plt.show()
-g.savefig(f'{PLOT_DIR}/absolute_effect.png', dpi=300)
+plt.savefig(f'{PLOT_DIR}/elevation_diff.png')
+plt.close()
 
-# ---- 1.1. Calculate the slope
-results = []
+main_df['music_based'] = numpy.where(
+    main_df['condition'].str.contains('flute|viola'), 'musical', 'non_musical'
+)
 
-for subject in data['subject'].unique():
-    temp_data = data[data['subject']==subject]
+main_df['centroid_based'] = numpy.where(
+    main_df['condition'].str.contains('viola|viola_complex'), 'high', 'low'
+)
 
-    for condition in temp_data['condition'].unique():
-        cond_data = temp_data[temp_data['condition']==condition]
+model_musical = smf.mixedlm('elevation_diff ~ frequency + value_ortho_freq_centroid + C(music_based)', main_df_filtered, groups='subject')
+model_musical_fitted = model_musical.fit()
+print(model_musical_fitted.summary())
 
-        freq = cond_data['frequency_bin'].to_numpy().reshape((-1,1))
-        elevation = cond_data['elevation_diff'].to_numpy()
+#### because we have the step for the last frequency bin, i would filter it out
 
-        model = LinearRegression().fit(freq, elevation)
-        [slope] = model.coef_
+main_df_filtered = main_df[main_df['frequency'] < 3000]
+model_cond_filtered = smf.mixedlm('elevation_diff ~ frequency * C(condition)', main_df_filtered, groups='subject')
+model_cond_filtered_fitted = model_cond_filtered.fit()
+print(model_cond_filtered_fitted.summary())
 
-        results.append({
+plt.figure(figsize=(12, 10))
+plt.subplot(2, 1, 1)
+sns.pointplot(x='frequency', y='elevation_diff', hue='condition', data=main_df_filtered)
+plt.title('Elevation Difference vs. Frequency by Condition', fontsize=14)
+plt.xlabel('Frequency', fontsize=12)
+plt.ylabel('Elevation Difference', fontsize=12)
+plt.subplot(2, 1, 2)
+conditions = main_df['condition'].unique()
+for condition in conditions:
+    subset = main_df_filtered[main_df_filtered['condition'] == condition]
+    sns.regplot(x='frequency', y='elevation_diff', data=subset, scatter=False, label=f'{condition} Trend')
+
+
+plt.xlabel('Frequency', fontsize=12)
+plt.ylabel('Elevation Difference', fontsize=12)
+plt.legend(title='Condition')
+plt.tight_layout()
+plt.show()
+plt.savefig(f'{PLOT_DIR}/elevation_diff_filtered.png')
+plt.close()
+
+# ====== ACOUSTIC FEATURES EFFECT
+
+model_af = smf.mixedlm('elevation_diff ~ frequency * C(condition) + value_ortho_freq_centroid',
+                        data=main_df_filtered,
+                        groups=main_df_filtered['subject'])
+
+model_af_fitted = model_af.fit()
+print(model_af_fitted.summary())
+
+model_af_inter = smf.mixedlm('elevation_diff ~ frequency * C(condition) + value_ortho_freq_centroid * C(condition)',
+                        data=main_df_filtered,
+                        groups=main_df_filtered['subject'])
+
+model_af_inter_fitted = model_af_inter.fit()
+print(model_af_inter_fitted.summary())
+
+
+# 4. Elevation Difference by Rolloff and Centroid
+plt.figure(figsize=(12, 6))
+plt.subplot(121)
+conditions = main_df['condition'].unique()
+for condition in conditions:
+    subset = main_df[main_df['condition'] == condition]
+    sns.regplot(x='value_ortho_freq_centroid', y='elevation_diff', data=subset, scatter=False, label=condition)
+plt.title('Elevation Difference by Condition')
+plt.xlabel('Centroid (orthogonalised)')
+plt.ylabel('Elevation Difference')
+plt.legend(title='Condition')
+plt.tight_layout()
+plt.show()
+
+plt.subplot(122)
+for condition in conditions:
+    subset = main_df[main_df['condition'] == condition]
+    sns.regplot(x='value_ortho_freq_rolloff', y='elevation_diff', data=subset, scatter=False, label=condition)
+plt.title('Elevation Difference by Condition')
+plt.xlabel('Rolloff (orthogonalised)')
+plt.ylabel('Elevation Difference')
+plt.legend(title='Condition')
+plt.tight_layout()
+plt.show()
+plt.savefig(f'{PLOT_DIR}/orthogonalised_acoustic_elevation_diff.png', dpi=300)
+plt.close()
+
+# -------------- #
+# slope analysis #
+# -------------- #
+
+slope_results = []
+
+for subject in main_df_filtered['subject'].unique():
+    subject_data = main_df_filtered[main_df_filtered['subject'] == subject]
+
+    # General frequency slope
+    slope, intercept, r_value, p_value, std_err = stats.linregress(
+        subject_data['frequency'],
+        subject_data['elevation_diff']
+    )
+
+    slope_results.append({
+        'subject': subject,
+        'condition': 'overall',
+        'x_variable': 'frequency',
+        'slope': slope,
+        'intercept': intercept,
+        'r_squared': r_value ** 2,
+        'p_value': p_value
+    })
+
+grouped = main_df_filtered.groupby(['subject', 'condition'])
+
+for (subject, condition), group in grouped:
+    # Skip centroid and rolloff for complex condition
+    x_variables = ['frequency']
+    if condition != 'complex':
+        x_variables.extend(['value_ortho_freq_centroid', 'value_ortho_freq_rolloff'])
+
+    for x_var in x_variables:
+        # Perform linear regression
+        slope, intercept, r_value, p_value, std_err = stats.linregress(
+            group[x_var],
+            group['elevation_diff']
+        )
+
+        # Store results
+        slope_results.append({
             'subject': subject,
             'condition': condition,
-            'slope': slope
+            'x_variable': x_var,
+            'slope': slope,
+            'intercept': intercept,
+            'r_squared': r_value ** 2,
+            'p_value': p_value
         })
 
-elevation_slopes = pandas.DataFrame(results)
+    # Convert results to DataFrame
+slopes_df = pandas.DataFrame(slope_results)
 
-# ----- PLOT the SLOPE
-f, ax = plt.subplots()
-sns.boxplot(data=elevation_slopes, x='condition', y='slope', fill=False, color='black')
-sns.swarmplot(data=elevation_slopes, x='condition', y='slope')
+statistical_results = {}
+x_variables = ['frequency', 'value_ortho_freq_centroid', 'value_ortho_freq_rolloff']
 
+for x_var in x_variables:
+    # Filter for the specific x-variable
+    var_slopes = slopes_df[slopes_df['x_variable'] == x_var]
 
-# ------- 2. RELATIVE EFFECT
-elevation_interval = data.groupby(['condition', 'subject', 'interval']).mean('elevation_diff')
-elevation_interval = elevation_interval.reset_index()
+    # Skip if no data (e.g., centroid/rolloff for complex)
+    if len(var_slopes) == 0:
+        continue
 
-g = sns.FacetGrid(elevation_interval, col="condition", col_wrap=3)
-g.map(sns.boxplot, "interval", "elevation_diff", fill=False, color='black')
-g.map(sns.swarmplot, "interval", "elevation_diff")
-g.set_axis_labels("Frequency ratio", "Elevation difference")
-g.add_legend()
-plt.show()
-g.savefig(f'{PLOT_DIR}/relative_effect.png', dpi=300)
+    # Prepare data for ANOVA
+    conditions = []
+    slopes = []
+    for condition in var_slopes['condition'].unique():
+        condition_slopes = var_slopes[var_slopes['condition'] == condition]['slope']
+        conditions.extend([condition] * len(condition_slopes))
+        slopes.extend(condition_slopes)
 
-# ------- 3. EFFECT of TIMBRE
-elevation_timbre = data.groupby(['condition', 'subject']).mean('elevation_diff')
-elevation_timbre = elevation_timbre.reset_index()
+    # One-way ANOVA
+    groups = [var_slopes[var_slopes['condition'] == cond]['slope'] for cond in var_slopes['condition'].unique()]
+    f_statistic, p_value = stats.f_oneway(*groups)
 
-sns.boxplot(data=data, x='condition', y='elevation_diff')
+    # Tukey HSD for post-hoc pairwise comparisons
+    tukey_results = pairwise_tukeyhsd(slopes, conditions)
 
+    # Store results
+    statistical_results[x_var] = {
+        'anova': {
+            'f_statistic': f_statistic,
+            'p_value': p_value
+        },
+        'tukey_results': tukey_results
+    }
 
+print("\n--- Statistical Comparisons ---")
+for x_var, results in statistical_results.items():
+    print(f"\nX-Variable: {x_var}")
+    print("ANOVA Results:")
+    print(f"F-statistic: {results['anova']['f_statistic']:.4f}")
+    print(f"p-value: {results['anova']['p_value']:.4f}")
+    print("\nTukey HSD Pairwise Comparisons:")
+    print(results['tukey_results'])
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-plt.figure(figsize=(12, 6))
-g = sns.lmplot(x='frequency_bin', y='elevation', hue='condition', data=data, height=6, aspect=2)
-g.set_axis_labels('Frequency (Hz)', 'Perceived Elevation (degrees)')
-plt.show()
-plt.savefig(f'{PLOT_DIR}/pratts_effect_plot.svg')
-
-
-# Plot - boxplot
-plt.figure(figsize=(12, 6))
-sns.boxplot(x='frequency_bin', y='elevation', hue='condition', data=data)
-plt.xlabel('Frequency (Hz)')
-plt.ylabel('Perceived Elevation (degrees)')
-plt.title('Boxplot of Elevation by Frequency Bin and Condition')
-plt.show()
-plt.savefig(f'{PLOT_DIR}/pratts_effect_boxplot.svg')
-
-plt.figure(figsize=(12, 6))
-sns.boxplot(x='interval', y='elevation_diff', data=data[data['condition']=='viola'])
-plt.xlabel('Interval')
-plt.ylabel('Perceived Elevation (degrees)')
-plt.title('Boxplot of Elevation by Interval and Condition')
-plt.show()
-plt.savefig(f'{PLOT_DIR}/relative_pratts_effect_boxplot.svg')
-
-data_grouped = data.groupby(['condition', 'interval']).mean('elevation_diff')
-
-###############################################
-def calculate_slope(group):
-    X = group['frequency']
-    y = group['elevation']
-
-    # Add a constant for the intercept in the model
-    X = sm.add_constant(X)
-
-    # Fit the OLS regression model
-    model = sm.OLS(y, X).fit()
-
-    # Return the slope of the regression
-    return pandas.Series({'slope': model.params[1]})
-
-
-slopes = data.groupby(['subject', 'condition']).apply(calculate_slope).reset_index()
-
-# Plot using seaborn, with direction on the x-axis, slope on the y-axis, and hue representing condition
-plt.figure(figsize=(12, 6))
-sns.boxplot(x='condition', y='slope', data=slopes)
-
-# Set axis labels and title
-plt.xlabel('Direction')
-plt.ylabel('Slope')
-plt.title('Slope of Perceived Elevation vs Frequency by Direction and Condition')
-
-# Show plot
+plt.figure(figsize=(15, 5))
+for i, x_var in enumerate(x_variables, 1):
+    plt.subplot(1, 3, i)
+    var_slopes = slopes_df[slopes_df['x_variable'] == x_var]
+    sns.boxplot(x='condition', y='slope', data=var_slopes)
+    plt.title(f'Slopes for {x_var}')
+    plt.xticks(rotation=45)
 plt.tight_layout()
 plt.show()
 
 
-# == FILTER DATA FOR SINGLE PARTICIPANT
-def plot_boxplot(subject):
-    data = pandas.read_csv(f'{RESULTS_DIR}/data.csv')
-    sub_data = data[data['subject']==subject]
+### ======= RELATIVE EFFECT
+
+main_df_filtered = main_df[main_df['frequency'] < 3000]
+main_df_filtered = main_df_filtered[main_df_filtered['frequency'] > 300]
+model_interval_filtered = smf.mixedlm('elevation_diff ~ interval * condition', main_df_filtered, groups='subject')
+model_interval_filtered_fitted = model_interval_filtered.fit()
+print(model_interval_filtered_fitted.summary())
+
+r = stats.pearsonr(main_df_filtered['frequency'], main_df_filtered['interval'])
+plt.scatter(main_df_filtered['elevation_diff'], main_df_filtered['interval'])
+
+plt.subplot()
+conditions = main_df_filtered['condition'].unique()
+for condition in conditions:
+    subset = main_df_filtered[main_df_filtered['condition'] == condition]
+    sns.regplot(x='interval', y='elevation_diff', data=subset, scatter=False, label=condition)
+plt.title('Elevation Difference by Condition')
+plt.xlabel('Interval')
+plt.ylabel('Elevation Difference')
+plt.legend(title='Condition')
+plt.tight_layout()
+plt.show()
 
 
-    # PLOTS
-    # Do we want to plot only perceived elevation or difference?
-    # Plot: boxplots for difference for frequencies
 
-    conditions = sub_data['condition'].unique()
-
-    # Set up the number of subplots
-    num_conditions = len(conditions)
-    fig, axes = plt.subplots(nrows=1, ncols=num_conditions, figsize=(5 * num_conditions, 6), sharey=True)
-
-    for ax, condition in zip(axes, conditions):
-        condition_data = sub_data[sub_data['condition'] == condition]
-
-        ax.boxplot([condition_data[condition_data['midi_note'] == note]['elevation'] for note in
-                    condition_data['midi_note'].unique()],
-                   labels=condition_data['midi_note'].unique())
-
-        ax.set_title(f"Condition: {condition}")
-        ax.set_xlabel('MIDI Note')
-        ax.set_ylabel('Elevation')
-
-    plt.tight_layout()
-    plt.show()
-    plt.savefig(f'{PLOT_DIR}/{subject}_boxplot.png', dpi=300)
-
-# Plot: difference in slope
-
-def plot_slope(subject):
-    data = pandas.read_csv(f'{RESULTS_DIR}/data.csv')
-    sub_data = data[data['subject'] == subject]
-    palette = sns.color_palette('Set1')
-    mean_data = sub_data.groupby(['condition', 'midi_note']).agg({'elevation_diff': 'mean'}).reset_index()
-    conditions = sub_data['condition'].unique()
-    plt.figure(figsize=(8, 6))
-
-    for i, condition in enumerate(conditions):
-        condition_data = mean_data[mean_data['condition'] == condition]
-
-        plt.scatter(condition_data['midi_note'], condition_data['elevation_diff'], label=condition, color=palette[i])
-
-        plt.plot(condition_data['midi_note'], condition_data['elevation_diff'], color=palette[i])
-
-    # Add labels and legend
-    plt.xlabel('MIDI Note')
-    plt.ylabel('Mean Elevation')
-    plt.legend(title='Condition')
-    plt.tight_layout()
-
-    plt.show()
-    plt.savefig(f'{PLOT_DIR}/{subject}_slope.png', dpi=300)
