@@ -7,7 +7,7 @@ from utils import create_dataframe
 import statsmodels.formula.api as smf
 from scipy import stats
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
-
+plt.rcParams['svg.fonttype'] = 'none'
 
 # ====== DIRECTORIES
 
@@ -22,6 +22,13 @@ elevation_mapping = {21 : 25.0,
                      23 : 0.0,
                      24 : -12.5,
                      25 : -25.0}
+
+palette = {
+    'flute': '#e22c1f',           # red
+    'complex': '#E5A09C',         # pink
+    'viola': '#2e33a6',           # blue
+    'viola_complex': '#9FA0CC'    # light blue
+}
 
 # ====== CREATE MAIN DATAFRAME
 
@@ -85,18 +92,18 @@ model_cond_fitted = model_cond.fit()
 print(model_cond_fitted.summary())
 
 # plot the results of the model
-
+palette = ['#e22c1f', '#ffce3a', '#2e33a6', '#5cb41b']
 plt.figure(figsize=(12, 10))
 plt.subplot(2, 1, 1)
-sns.pointplot(x='frequency', y='elevation_diff', hue='condition', data=main_df)
+sns.pointplot(x='frequency', y='elevation_diff', hue='condition', palette=palette, data=main_df)
 plt.title('Elevation Difference vs. Frequency by Condition', fontsize=14)
 plt.xlabel('Frequency', fontsize=12)
 plt.ylabel('Elevation Difference', fontsize=12)
 plt.subplot(2, 1, 2)
 conditions = main_df['condition'].unique()
-for condition in conditions:
+for idx, condition in enumerate(conditions):
     subset = main_df[main_df['condition'] == condition]
-    sns.regplot(x='frequency', y='elevation_diff', data=subset, scatter=False, label=f'{condition} Trend')
+    sns.regplot(x='frequency', y='elevation_diff', data=subset, scatter=False, color=palette[idx], label=f'{condition} Trend')
 
 
 plt.xlabel('Frequency', fontsize=12)
@@ -115,9 +122,13 @@ main_df['centroid_based'] = numpy.where(
     main_df['condition'].str.contains('viola|viola_complex'), 'high', 'low'
 )
 
-model_musical = smf.mixedlm('elevation_diff ~ frequency + value_ortho_freq_centroid + C(music_based)', main_df_filtered, groups='subject')
+model_musical = smf.mixedlm('elevation_diff ~ frequency * C(music_based) + value_ortho_freq_centroid', main_df_filtered, groups='subject')
 model_musical_fitted = model_musical.fit()
 print(model_musical_fitted.summary())
+
+model_centroid = smf.mixedlm('elevation_diff ~ frequency * C(centroid_based) + value_ortho_freq_centroid', main_df_filtered, groups='subject')
+model_centroid_fitted = model_centroid.fit()
+print(model_centroid_fitted.summary())
 
 #### because we have the step for the last frequency bin, i would filter it out
 
@@ -126,17 +137,17 @@ model_cond_filtered = smf.mixedlm('elevation_diff ~ frequency * C(condition)', m
 model_cond_filtered_fitted = model_cond_filtered.fit()
 print(model_cond_filtered_fitted.summary())
 
-plt.figure(figsize=(12, 10))
+plt.figure(figsize=(8, 10))
 plt.subplot(2, 1, 1)
-sns.pointplot(x='frequency', y='elevation_diff', hue='condition', data=main_df_filtered)
+sns.pointplot(x='frequency', y='elevation_diff', hue='condition', palette=palette, data=main_df_filtered)
 plt.title('Elevation Difference vs. Frequency by Condition', fontsize=14)
 plt.xlabel('Frequency', fontsize=12)
 plt.ylabel('Elevation Difference', fontsize=12)
 plt.subplot(2, 1, 2)
 conditions = main_df['condition'].unique()
-for condition in conditions:
+for idx, condition in enumerate(conditions):
     subset = main_df_filtered[main_df_filtered['condition'] == condition]
-    sns.regplot(x='frequency', y='elevation_diff', data=subset, scatter=False, label=f'{condition} Trend')
+    sns.regplot(x='frequency', y='elevation_diff', data=subset, color=palette[condition], scatter=False, label=f'{condition} Trend')
 
 
 plt.xlabel('Frequency', fontsize=12)
@@ -144,7 +155,7 @@ plt.ylabel('Elevation Difference', fontsize=12)
 plt.legend(title='Condition')
 plt.tight_layout()
 plt.show()
-plt.savefig(f'{PLOT_DIR}/elevation_diff_filtered.png')
+plt.savefig(f'{PLOT_DIR}/elevation_diff_filtered.svg')
 plt.close()
 
 # ====== ACOUSTIC FEATURES EFFECT
@@ -162,6 +173,35 @@ model_af_inter = smf.mixedlm('elevation_diff ~ frequency * C(condition) + value_
 
 model_af_inter_fitted = model_af_inter.fit()
 print(model_af_inter_fitted.summary())
+
+# correlation between centroid and elevation difference for each fundamental frequency separatelly
+
+from scipy.stats import pearsonr
+
+centroid_corrs = []
+
+for freq, group in main_df_filtered.groupby('frequency_bin'):
+    if len(group) >= 5:
+        r, p = pearsonr(group['value_centroid'], group['elevation_diff'])
+        centroid_corrs.append({'frequency_bin': freq, 'r': r, 'p_value': p, 'n': len(group)})
+
+centroid_corrs_df = pandas.DataFrame(centroid_corrs)
+
+print(centroid_corrs_df.sort_values('frequency_bin'))
+
+main_df_filtered['freq_bin'] = main_df_filtered['frequency'].round(0).astype(int)
+
+# Plot
+g = sns.FacetGrid(main_df_filtered, col='frequency_bin', col_wrap=3, height=3.5, sharex=False, sharey=False)
+g.map(sns.scatterplot, 'value_centroid', 'elevation_diff', alpha=0.3, color='grey')
+g.map(sns.regplot, 'value_centroid', 'elevation_diff', scatter=False, color='black')
+
+g.set_axis_labels('Spectral Centroid', 'Elevation Difference')
+g.set_titles('f₀ = {col_name} Hz')
+plt.subplots_adjust(top=0.9)
+g.fig.suptitle('Centroid vs. Elevation Difference by Frequency')
+plt.show()
+plt.savefig(f'{PLOT_DIR}/centroid_vs_elevation_diff.svg')
 
 
 # 4. Elevation Difference by Rolloff and Centroid
@@ -219,50 +259,41 @@ for subject in main_df_filtered['subject'].unique():
 grouped = main_df_filtered.groupby(['subject', 'condition'])
 
 for (subject, condition), group in grouped:
-    # Skip centroid and rolloff for complex condition
-    x_variables = ['frequency']
-    if condition != 'complex':
-        x_variables.extend(['value_ortho_freq_centroid', 'value_ortho_freq_rolloff'])
+    # Perform linear regression
+    slope, intercept, r_value, p_value, std_err = stats.linregress(
+        group['frequency'],
+        group['elevation_diff']
+    )
 
-    for x_var in x_variables:
-        # Perform linear regression
-        slope, intercept, r_value, p_value, std_err = stats.linregress(
-            group[x_var],
-            group['elevation_diff']
-        )
-
-        # Store results
-        slope_results.append({
-            'subject': subject,
-            'condition': condition,
-            'x_variable': x_var,
-            'slope': slope,
-            'intercept': intercept,
-            'r_squared': r_value ** 2,
-            'p_value': p_value
-        })
+    # Store results
+    slope_results.append({
+        'subject': subject,
+        'condition': condition,
+        'x_variable': 'frequency',
+        'slope': slope,
+        'intercept': intercept,
+        'r_squared': r_value ** 2,
+        'p_value': p_value
+    })
 
     # Convert results to DataFrame
 slopes_df = pandas.DataFrame(slope_results)
 
 statistical_results = {}
-x_variables = ['frequency', 'value_ortho_freq_centroid', 'value_ortho_freq_rolloff']
 
-for x_var in x_variables:
-    # Filter for the specific x-variable
-    var_slopes = slopes_df[slopes_df['x_variable'] == x_var]
+# Prepare data for ANOVA
+slope_data_filtered = slopes_df[slopes_df['condition'] != 'overall']
+x_var = 'frequency'
+var_slopes = slope_data_filtered[slope_data_filtered['x_variable'] == x_var]
+groups = [group['slope'].values for _, group in var_slopes.groupby('condition')]
+f_stat, p_value = stats.f_oneway(*groups)
 
-    # Skip if no data (e.g., centroid/rolloff for complex)
-    if len(var_slopes) == 0:
-        continue
-
-    # Prepare data for ANOVA
-    conditions = []
-    slopes = []
-    for condition in var_slopes['condition'].unique():
-        condition_slopes = var_slopes[var_slopes['condition'] == condition]['slope']
-        conditions.extend([condition] * len(condition_slopes))
-        slopes.extend(condition_slopes)
+conditions = []
+slopes = []
+for condition in slopes_df['condition'].unique():
+    condition_slopes = slopes_df[slopes_df['condition'] == condition]['slope']
+    conditions.extend([condition] * len(condition_slopes))
+    slopes.extend(condition_slopes)
 
     # One-way ANOVA
     groups = [var_slopes[var_slopes['condition'] == cond]['slope'] for cond in var_slopes['condition'].unique()]
@@ -303,13 +334,17 @@ plt.show()
 ### ======= RELATIVE EFFECT
 
 main_df_filtered = main_df[main_df['frequency'] < 3000]
-main_df_filtered = main_df_filtered[main_df_filtered['frequency'] > 300]
-model_interval_filtered = smf.mixedlm('elevation_diff ~ interval * condition', main_df_filtered, groups='subject')
+#main_df_filtered = main_df_filtered[main_df_filtered['frequency'] > 300]
+model_interval_filtered = smf.mixedlm('elevation_diff ~ frequency + interval * condition', main_df_filtered, groups='subject')
 model_interval_filtered_fitted = model_interval_filtered.fit()
 print(model_interval_filtered_fitted.summary())
 
 r = stats.pearsonr(main_df_filtered['frequency'], main_df_filtered['interval'])
-plt.scatter(main_df_filtered['elevation_diff'], main_df_filtered['interval'])
+
+plt.subplot()
+sns.regplot(x='interval', y='elevation_diff', data=main_df_filtered, scatter=False, color='black')
+plt.scatter(main_df_filtered['interval'], main_df_filtered['elevation_diff'], color='gray')
+plt.savefig(f'{PLOT_DIR}/elevation_interval.svg', dpi=300)
 
 plt.subplot()
 conditions = main_df_filtered['condition'].unique()

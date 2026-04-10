@@ -6,6 +6,7 @@ import statsmodels.api as sm
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+plt.rcParams['svg.fonttype'] = 'none'
 
 slab.set_default_samplerate(44828)
 # ====== DIRECTORIES
@@ -38,11 +39,32 @@ acoustic_features = acoustic_features.pivot_table(
     values='value',
     aggfunc='first'
 ).reset_index()
-
-g = sns.lmplot(data=acoustic_features, x="frequency", y="centroid", hue="condition", ci=None)
+palette = ['#e22c1f', '#E5A09C', '#2e33a6', '#9FA0CC']
+g = sns.lmplot(data=acoustic_features, x="frequency", y="centroid", hue="condition", palette=palette, ci=None)
 g.set_axis_labels("Frequency (Hz)", "Spectral Centroid (Hz)")
-g.savefig(f'{PLOT_DIR}/centroid_stimuli.png', dpi=300)
+g.savefig(f'{PLOT_DIR}/centroid_stimuli.svg', dpi=300)
 plt.close()
+
+g = sns.barplot(data=acoustic_features, x="condition", y="centroid", hue="condition", palette=palette)
+plt.ylim((0, 4500))
+plt.yticks((0,1000, 2000, 3000, 4000))
+plt.savefig(f'{PLOT_DIR}/centroid_stimuli_bar.svg', dpi=300)
+plt.close()
+
+from scipy.stats import f_oneway
+
+groups = [group["centroid"].values for name, group in acoustic_features.groupby("condition")]
+f_stat, p_val = f_oneway(*groups)
+
+print(f"ANOVA F = {f_stat:.3f}, p = {p_val:.4f}")
+
+import statsmodels.api as sm
+from statsmodels.stats.multicomp import pairwise_tukeyhsd
+
+tukey = pairwise_tukeyhsd(endog=acoustic_features["centroid"],
+                          groups=acoustic_features["condition"],
+                          alpha=0.05)
+print(tukey)
 
 g = sns.lmplot(data=acoustic_features, x="frequency", y="rolloff", hue="condition", ci=None)
 g.set_axis_labels("Frequency (Hz)", "Spectral Roll-Off (Hz)")
