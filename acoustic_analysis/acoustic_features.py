@@ -41,134 +41,10 @@ TRAINING_TONES = [f for f in os.listdir(TRAINING_STIM_DIR) if 'stim' in f]
 # 1. FUNCTIONS TO COMPUTE ACOUSTIC FEATURES
 # ================================================
 
-def rms_envelope(x, sr, win_ms=5, hop_ms=1):
-    win = int(sr * win_ms / 1000)
-    hop = int(sr * hop_ms / 1000)
-    if win < 1:
-        win = 1
-    if hop < 1:
-        hop = 1
-    env = librosa.feature.rms(y=x, frame_length=win, hop_length=hop)[0]
-    t = librosa.frames_to_time(np.arange(len(env)), sr=sr, hop_length=hop)
-    return t, env
-
-def attack_decay_time(x, sr, thresh_low=0.1, thresh_high=0.9):
-    x = np.asarray(x)
-    x = x - np.mean(x)
-    env = np.abs(signal.hilbert(x))
-    env = signal.savgol_filter(env, 101 if len(env) > 101 else max(5, len(env)//2*2+1), 3)
-    peak = np.max(env)
-    if peak <= 0:
-        return np.nan, np.nan
-    env = env / peak
-    onset = np.where(env >= thresh_low)[0]
-    peak_idx = np.argmax(env)
-    if len(onset) == 0:
-        return np.nan, np.nan
-    attack_idx = onset[0]
-    attack_time = (peak_idx - attack_idx) / sr if peak_idx > attack_idx else 0.0
-
-    decay_region = env[peak_idx:]
-    below = np.where(decay_region <= thresh_low)[0]
-    if len(below) == 0:
-        decay_time = np.nan
-    else:
-        decay_time = below[0] / sr
-    return attack_time, decay_time
-
 def spectral_centroid(x, sr):
     S = np.abs(librosa.stft(x, n_fft=2048, hop_length=512))
     cent = librosa.feature.spectral_centroid(S=S, sr=sr)[0]
     return float(np.mean(cent))
-
-def intensity_dbfs(x):
-    rms = np.sqrt(np.mean(np.square(x)))
-    return float(20 * np.log10(rms + 1e-12))
-
-def vibrato_rate_depth(x, sr):
-    y = np.asarray(x)
-    f0, voiced_flag, voiced_probs = librosa.pyin(
-        y,
-        fmin=librosa.note_to_hz('C2'),
-        fmax=librosa.note_to_hz('C7'),
-        sr=sr
-    )
-    f0 = pd.Series(f0).interpolate().bfill().ffill().to_numpy()
-    if np.all(np.isnan(f0)) or np.nanstd(f0) == 0:
-        return np.nan, np.nan
-    cents = 1200 * np.log2(f0 / np.nanmean(f0))
-    cents = cents[np.isfinite(cents)]
-    if len(cents) < 8:
-        return np.nan, np.nan
-    fs_f0 = sr / 512
-    f, Pxx = signal.welch(cents - np.mean(cents), fs=fs_f0, nperseg=min(256, len(cents)))
-    mask = (f >= 4) & (f <= 12)
-    if not np.any(mask):
-        return np.nan, np.nan
-    vib_rate = float(f[mask][np.argmax(Pxx[mask])])
-    vib_depth = float(np.std(cents))
-    return vib_rate, vib_depth
-
-def harmonic_distribution(x, sr, n_harmonics=10):
-    y = np.asarray(x)
-    f0, voiced_flag, voiced_probs = librosa.pyin(
-        y,
-        fmin=librosa.note_to_hz('C2'),
-        fmax=librosa.note_to_hz('C7'),
-        sr=sr
-    )
-    f0 = pd.Series(f0).interpolate().bfill().ffill().to_numpy()
-    f0_mean = np.nanmean(f0)
-    if not np.isfinite(f0_mean) or f0_mean <= 0:
-        return [np.nan] * n_harmonics
-    freqs = np.fft.rfftfreq(len(y), d=1/sr)
-    mag = np.abs(np.fft.rfft(y * np.hanning(len(y))))
-    harmonic_amps = []
-    for k in range(1, n_harmonics + 1):
-        target = k * f0_mean
-        idx = np.argmin(np.abs(freqs - target))
-        harmonic_amps.append(float(mag[idx]))
-    total = np.sum(harmonic_amps)
-    if total > 0:
-        harmonic_amps = [h / total for h in harmonic_amps]
-    return harmonic_amps
-
-# ================================================
-# 2. COMPUTE ACOUSTIC FEATURES
-# ================================================
-
-# 1.1. Compute acoustic features for the tones used in the experiment
-for tone in TONES[:4]:
-    tone_path = os.path.join(TONE_DIR, tone)
-    tone_sound = slab.Sound(tone_path)
-
-    x = np.asarray(tone_sound.data).squeeze()
-    x = np.squeeze(x)
-    if x.ndim == 2:
-        x = x.mean(axis=1)
-
-    sr = int(tone_sound.samplerate)
-
-    spec_cent = spectral_centroid(x, sr)
-    vib_rate, vib_depth = vibrato_rate_depth(x, sr)
-    attack_t, decay_t = attack_decay_time(x, sr)
-    intensity = intensity_dbfs(x)
-    harmonics = harmonic_distribution(x, sr, n_harmonics=10)
-
-    row = {
-        "file": tone,
-        "spectral_centroid_hz": spec_cent,
-        "vibrato_rate_hz": vib_rate,
-        "vibrato_depth_cents": vib_depth,
-        "attack_time_s": attack_t,
-        "decay_time_s": decay_t,
-        "intensity_dbfs": intensity,
-    }
-
-    for i, h in enumerate(harmonics, start=1):
-        row[f"harmonic_{i}_rel_amp"] = h
-
-    print(row)
 
 # ================================================
 # 2.1. PLOT DISTRIBUTION OF AVERAGE SPECTRAL CENTROID OF THE TRAINING TONES
@@ -197,6 +73,120 @@ plt.tight_layout()
 plt.savefig(f'{PLOT_DIR}/spectral_centroid_distribution.svg', dpi=300)
 plt.savefig(f'{PLOT_DIR}/spectral_centroid_distribution.png', dpi=300)
 plt.close()
+
+
+# ================================================
+# 2.1b. BAND-LEVEL DISTRIBUTION OF TRAINING TONES (COSINE FILTER BANK)
+# ================================================
+
+FILTER_BANK_PARAMS = {"bandwidth": 1 / 3, "low_cutoff": 100}
+
+_ref_sound = slab.Sound(os.path.join(TRAINING_STIM_DIR, TRAINING_TONES[0]))
+_ref_fbank = slab.Filter.cos_filterbank(
+    length=_ref_sound.n_samples,
+    samplerate=_ref_sound.samplerate,
+    **FILTER_BANK_PARAMS,
+)
+_freqs_hz, _mag = _ref_fbank.tf(show=False)
+_center_freqs_hz = np.asarray(_freqs_hz)[np.argmax(np.asarray(_mag), axis=0)]
+_n_bands = len(_center_freqs_hz)
+
+band_level_rows = []
+for tfile in TRAINING_TONES:
+    tpath = os.path.join(TRAINING_STIM_DIR, tfile)
+    tsound = slab.Sound(tpath)
+    fbank = slab.Filter.cos_filterbank(
+        length=tsound.n_samples,
+        samplerate=tsound.samplerate,
+        **FILTER_BANK_PARAMS,
+    )
+    levels = fbank.apply(tsound).level
+    for band_idx, level in enumerate(levels):
+        band_level_rows.append(
+            {
+                "stimulus": tfile,
+                "band": band_idx,
+                "center_freq_hz": float(_center_freqs_hz[band_idx]),
+                "level_db": float(level),
+            }
+        )
+
+band_levels_df = pd.DataFrame(band_level_rows)
+band_levels_df.to_csv(f"{RESULTS_DIR}/training_tones_band_levels.csv", index=False)
+
+band_labels = [
+    f"{cf / 1000:.2f}" if cf < 1000 else f"{cf / 1000:.1f}"
+    for cf in _center_freqs_hz
+]
+
+violin_offset = -0.27
+strip_offset = 0.27
+violin_width = 0.5
+box_width = 0.12
+
+fig, ax = plt.subplots(figsize=(max(10, _n_bands * 0.55), 5))
+band_positions = np.arange(_n_bands)
+
+violin_data = [
+    band_levels_df.loc[band_levels_df["band"] == band_idx, "level_db"].to_numpy()
+    for band_idx in band_positions
+]
+violin_parts = ax.violinplot(
+    violin_data,
+    positions=band_positions + violin_offset,
+    widths=violin_width,
+    showmeans=False,
+    showmedians=False,
+    showextrema=False,
+)
+for body in violin_parts["bodies"]:
+    body.set_facecolor("#A8DADC")
+    body.set_edgecolor("#457B9D")
+    body.set_alpha(0.75)
+    verts = body.get_paths()[0].vertices
+    center_x = verts[:, 0].mean()
+    verts[:, 0] = np.minimum(verts[:, 0], center_x)
+
+sns.boxplot(
+    data=band_levels_df,
+    x="band",
+    y="level_db",
+    order=band_positions,
+    width=box_width,
+    color="white",
+    linewidth=1,
+    fliersize=0,
+    boxprops={"edgecolor": "black", "facecolor": "white"},
+    whiskerprops={"color": "black"},
+    capprops={"color": "black"},
+    medianprops={"color": "black", "linewidth": 1.5},
+    ax=ax,
+)
+
+strip_df = band_levels_df.copy()
+strip_df["band_strip"] = strip_df["band"] + strip_offset
+sns.stripplot(
+    data=strip_df,
+    x="band_strip",
+    y="level_db",
+    color="#1D3557",
+    alpha=0.35,
+    size=2.5,
+    jitter=0.08,
+    ax=ax,
+)
+
+ax.set_xticks(band_positions)
+ax.set_xticklabels(band_labels, rotation=45, ha="right")
+ax.set_xlabel("Frequency band center (kHz)")
+ax.set_ylabel("Band level (dB SPL)")
+ax.set_title("Training tones: band-level distribution (half violin, box, stimuli)")
+ax.set_xlim(-0.6, _n_bands - 0.4)
+fig.tight_layout()
+fig.savefig(f"{PLOT_DIR}/training_tones_band_levels.svg", dpi=300)
+fig.savefig(f"{PLOT_DIR}/training_tones_band_levels.png", dpi=300)
+plt.close(fig)
+
 
 # ================================================
 # 2.2. PLOT SPECTROGRAM AND FFT OF A TONE
@@ -262,7 +252,8 @@ PARISE_BANDS_HZ = [
     (1400, 2500, "1.4–2.5"),
     (2500, 4500, "2.5–4.5"),
     (4500, 8000, "4.5–8"),
-    (8000, None, ">8"),
+    (8000, 16000, "8-16"),
+    (16000, 32000, "16-32"),
 ]
 EXPERIMENTAL_ELEVATIONS = [-25.0, -12.5, 0.0, 12.5, 25.0]
 ELEVATION_GRID = np.arange(-40, 41, 1)
@@ -273,26 +264,11 @@ def _band_mask(freqs, f_low, f_high):
         return freqs >= f_low
     return (freqs >= f_low) & (freqs < f_high)
 
-
-def _band_center(freqs, f_low, f_high):
-    mask = _band_mask(freqs, f_low, f_high)
-    if not np.any(mask):
-        return np.nan
-    band_freqs = freqs[mask]
-    return float(np.sqrt(f_low * band_freqs[-1])) if f_low > 0 else float(np.mean(band_freqs))
-
-
 def hrtf_transfer_db(hrtf, azimuth, elevation):
     """Return frequency axis and HRTF magnitude (dB) for left and right ears."""
     filt = hrtf.interpolate(azimuth=azimuth, elevation=elevation)
     freqs, mag_db = filt.tf(show=False)
     return freqs, mag_db
-
-
-def best_elevation_per_frequency(mag_stack, elevation_axis):
-    """For each frequency channel and ear, return elevation of maximum HRTF gain."""
-    best_idx = np.argmax(mag_stack, axis=0)
-    return elevation_axis[best_idx]
 
 
 def mean_gain_in_band(mag_db, freqs, f_low, f_high):
@@ -328,24 +304,6 @@ for elev_idx, elev in enumerate(ELEVATION_GRID):
     _, mag_db = hrtf_transfer_db(hrtf, azimuth=0, elevation=elev)
     mag_stack[elev_idx] = mag_db
 
-# Parise 1C lower panel: elevation that maximises HRTF gain at each frequency
-best_elevs_lr = best_elevation_per_frequency(mag_stack, ELEVATION_GRID)
-best_elevs_mean = best_elevs_lr.mean(axis=1)
-best_elevs_sem = best_elevs_lr.std(axis=1, ddof=1) / np.sqrt(2)
-
-binned_rows = []
-for f_low, f_high, label in parise_bands:
-    mask = _band_mask(freqs, f_low, f_high)
-    band_best_lr = best_elevs_lr[mask]
-    binned_rows.append({
-        "band": label,
-        "freq_center_hz": _band_center(freqs, f_low, f_high),
-        "best_elevation_mean": float(band_best_lr.mean()),
-        "best_elevation_sem": float(band_best_lr.std(ddof=1) / np.sqrt(2)),
-    })
-
-binned_df = pd.DataFrame(binned_rows)
-
 # Gain at each experimental location, per frequency band
 gain_rows = []
 for elev in EXPERIMENTAL_ELEVATIONS:
@@ -357,42 +315,9 @@ for elev in EXPERIMENTAL_ELEVATIONS:
     gain_rows.append(row)
 
 gain_df = pd.DataFrame(gain_rows).set_index("elevation")
-binned_df.to_csv(f"{RESULTS_DIR}/kemar_parise_best_elevation_by_band.csv", index=False)
-gain_df.to_csv(f"{RESULTS_DIR}/kemar_parise_band_gain_by_elevation.csv")
+gain_df.to_csv(f"{RESULTS_DIR}/kemar_band_gain_by_elevation.csv")
 
-for _, row in binned_df.iterrows():
-    print(
-        f"Band {row['band']} kHz: best elevation "
-        f"{row['best_elevation_mean']:+.1f}° ± {row['best_elevation_sem']:.1f}°"
-    )
-
-# Plot 1 — Parise Fig. 1C lower panel (proximal HRTF statistics)
-fig, ax = plt.subplots(figsize=(7, 4.5))
-ax.plot(
-    freqs, best_elevs_mean,
-    linestyle="--", color="0.45", linewidth=1.2, label="Per frequency channel",
-)
-ax.errorbar(
-    binned_df["freq_center_hz"],
-    binned_df["best_elevation_mean"],
-    yerr=binned_df["best_elevation_sem"],
-    fmt="o-", color="black", linewidth=2, markersize=7, capsize=4,
-    label="Binned bands (mean ± SEM, L/R ears)",
-)
-ax.set_xscale("log")
-ax.set_xlabel("Frequency (Hz)")
-ax.set_ylabel("Elevation of maximum HRTF gain (°)")
-ax.set_title("KEMAR HRTF proximal statistics (midsagittal plane, azimuth 0°)")
-ax.set_xlim(200, nyquist)
-ax.set_ylim(-45, 45)
-ax.axhline(0, color="0.85", linewidth=0.8)
-ax.legend(frameon=False, loc="upper left")
-fig.tight_layout()
-fig.savefig(f"{KEMAR_PLOT_DIR}/parise_hrtf_best_elevation.svg", dpi=300)
-fig.savefig(f"{KEMAR_PLOT_DIR}/parise_hrtf_best_elevation.png", dpi=300)
-plt.close(fig)
-
-# Plot 2 — HRTF band gain at each experimental elevation
+# Plot 1 — HRTF band gain at each experimental elevation
 band_labels = [label for _, _, label in parise_bands]
 x_pos = np.arange(len(band_labels))
 
