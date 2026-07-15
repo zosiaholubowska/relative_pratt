@@ -1,10 +1,10 @@
 import os
+import re
 import pandas as pd
 import slab
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.signal as signal
-import scipy.fft as fft
+import matplotlib.colors as mcolors
 import librosa
 import librosa.display
 import librosa.feature
@@ -46,6 +46,40 @@ def spectral_centroid(x, sr):
     cent = librosa.feature.spectral_centroid(S=S, sr=sr)[0]
     return float(np.mean(cent))
 
+
+def mono_sound(sound):
+    x = np.asarray(sound.data).squeeze()
+    if x.ndim == 2:
+        x = x.mean(axis=1)
+    return slab.Sound(x, samplerate=sound.samplerate)
+
+
+def band_levels(sound, filter_params):
+    mono = mono_sound(sound)
+    fbank = slab.Filter.cos_filterbank(
+        length=mono.n_samples,
+        samplerate=mono.samplerate,
+        **filter_params,
+    )
+    return fbank.apply(mono).level
+
+
+def filterbank_center_freqs(length, samplerate, filter_params):
+    fbank = slab.Filter.cos_filterbank(
+        length=length,
+        samplerate=samplerate,
+        **filter_params,
+    )
+    freqs_hz, mag = fbank.tf(show=False)
+    return np.asarray(freqs_hz)[np.argmax(np.asarray(mag), axis=0)]
+
+
+def condition_color_by_midi(base_hex, midi, midi_min, midi_max, sat_range=(0.25, 1.0)):
+    hsv = mcolors.rgb_to_hsv(mcolors.to_rgb(base_hex))
+    norm = (midi - midi_min) / (midi_max - midi_min)
+    hsv[1] = sat_range[0] + norm * (sat_range[1] - sat_range[0])
+    return mcolors.hsv_to_rgb(hsv)
+
 # ================================================
 # 2.1. PLOT DISTRIBUTION OF AVERAGE SPECTRAL CENTROID OF THE TRAINING TONES
 # ================================================
@@ -79,7 +113,9 @@ plt.close()
 # 2.1b. BAND-LEVEL DISTRIBUTION OF TRAINING TONES (COSINE FILTER BANK)
 # ================================================
 
-FILTER_BANK_PARAMS = {"bandwidth": 1 / 3, "low_cutoff": 100}
+FILTER_BANK_PARAMS = {"n_filters": 10, "low_cutoff": 100}
+
+# compute the reference fbank for plotting
 
 _ref_sound = slab.Sound(os.path.join(TRAINING_STIM_DIR, TRAINING_TONES[0]))
 _ref_fbank = slab.Filter.cos_filterbank(
@@ -90,6 +126,8 @@ _ref_fbank = slab.Filter.cos_filterbank(
 _freqs_hz, _mag = _ref_fbank.tf(show=False)
 _center_freqs_hz = np.asarray(_freqs_hz)[np.argmax(np.asarray(_mag), axis=0)]
 _n_bands = len(_center_freqs_hz)
+
+# analyze the training tones
 
 band_level_rows = []
 for tfile in TRAINING_TONES:
@@ -114,6 +152,8 @@ for tfile in TRAINING_TONES:
 band_levels_df = pd.DataFrame(band_level_rows)
 band_levels_df.to_csv(f"{RESULTS_DIR}/training_tones_band_levels.csv", index=False)
 
+# plot the band-level distribution
+
 band_labels = [
     f"{cf / 1000:.2f}" if cf < 1000 else f"{cf / 1000:.1f}"
     for cf in _center_freqs_hz
@@ -123,6 +163,10 @@ violin_offset = -0.27
 strip_offset = 0.27
 violin_width = 0.5
 box_width = 0.12
+
+
+label_fontsize = 20
+tick_fontsize = 18
 
 fig, ax = plt.subplots(figsize=(max(10, _n_bands * 0.55), 5))
 band_positions = np.arange(_n_bands)
@@ -140,8 +184,8 @@ violin_parts = ax.violinplot(
     showextrema=False,
 )
 for body in violin_parts["bodies"]:
-    body.set_facecolor("#A8DADC")
-    body.set_edgecolor("#457B9D")
+    body.set_facecolor("#A9A9A9")
+    body.set_edgecolor("none")
     body.set_alpha(0.75)
     verts = body.get_paths()[0].vertices
     center_x = verts[:, 0].mean()
@@ -162,26 +206,13 @@ sns.boxplot(
     medianprops={"color": "black", "linewidth": 1.5},
     ax=ax,
 )
-
-strip_df = band_levels_df.copy()
-strip_df["band_strip"] = strip_df["band"] + strip_offset
-sns.stripplot(
-    data=strip_df,
-    x="band_strip",
-    y="level_db",
-    color="#1D3557",
-    alpha=0.35,
-    size=2.5,
-    jitter=0.08,
-    ax=ax,
-)
-
 ax.set_xticks(band_positions)
-ax.set_xticklabels(band_labels, rotation=45, ha="right")
-ax.set_xlabel("Frequency band center (kHz)")
-ax.set_ylabel("Band level (dB SPL)")
-ax.set_title("Training tones: band-level distribution (half violin, box, stimuli)")
+ax.set_xticklabels(band_labels, rotation=45, ha="right", fontsize=tick_fontsize)
+ax.set_yticklabels(ax.get_yticks(), fontsize=tick_fontsize)
+ax.set_xlabel("Frequency band center (kHz)", fontsize=label_fontsize)
+ax.set_ylabel("Band level (dB SPL)", fontsize=label_fontsize)
 ax.set_xlim(-0.6, _n_bands - 0.4)
+ax.tick_params(axis='y', labelsize=tick_fontsize)
 fig.tight_layout()
 fig.savefig(f"{PLOT_DIR}/training_tones_band_levels.svg", dpi=300)
 fig.savefig(f"{PLOT_DIR}/training_tones_band_levels.png", dpi=300)
@@ -225,7 +256,7 @@ def plot_tone_spectra(condition, midi):
     fig.tight_layout()
     return fig
 
-# USE
+# USAGE:
 # PLOT_CONDITION = "harmoniccomplex"
 # PLOT_MIDI = 56
 # plot_tone_spectra(PLOT_CONDITION, PLOT_MIDI)
@@ -237,6 +268,100 @@ for condition in CONDITION_SUFFIX.keys():
         plot_tone_spectra(condition, midi)
         plt.savefig(f'{PLOT_DIR}/stimuli/{condition}_{midi}.png', dpi=300)
         plt.close()
+
+# ================================================
+# 2.2b. BAND-LEVEL ANALYSIS OF EXPERIMENTAL TONES
+# ================================================
+
+CONDITION_PALETTE = {
+    "flute": "#e22c1f",                # red
+    "harmoniccomplex": "#33c33c",      # green 
+    "viola": "#2e33a6",                # blue
+    "viola_complex": "#ffd600",        # yellow 
+}
+STIM_PATH_RE = re.compile(r"^(?P<condition>[^/]+)/stim_(?P<midi>\d+)_")
+
+_ref_exp_sound = slab.Sound(os.path.join(TONE_DIR, TONES[0]))
+_exp_center_freqs_hz = filterbank_center_freqs(
+    _ref_exp_sound.n_samples,
+    _ref_exp_sound.samplerate,
+    FILTER_BANK_PARAMS,
+)
+_exp_n_bands = len(_exp_center_freqs_hz)
+_exp_band_labels = [
+    f"{cf / 1000:.2f}" if cf < 1000 else f"{cf / 1000:.1f}"
+    for cf in _exp_center_freqs_hz
+]
+_exp_band_positions = np.arange(_exp_n_bands)
+
+exp_band_rows = []
+for tone_rel_path in TONES:
+    match = STIM_PATH_RE.match(tone_rel_path)
+    if not match:
+        continue
+    condition = match.group("condition")
+    midi = int(match.group("midi"))
+    tone_path = os.path.join(TONE_DIR, tone_rel_path)
+    sound = slab.Sound(tone_path)
+    levels = band_levels(sound, FILTER_BANK_PARAMS)
+    for band_idx, level in enumerate(levels):
+        exp_band_rows.append(
+            {
+                "condition": condition,
+                "midi": midi,
+                "band": band_idx,
+                "center_freq_hz": float(_exp_center_freqs_hz[band_idx]),
+                "level_db": float(level),
+            }
+        )
+
+exp_band_levels_df = pd.DataFrame(exp_band_rows)
+exp_band_levels_df.to_csv(f"{RESULTS_DIR}/experiment_tones_band_levels.csv", index=False)
+
+midi_min = exp_band_levels_df["midi"].min()
+midi_max = exp_band_levels_df["midi"].max()
+label_fontsize = 20
+tick_fontsize = 18
+
+# heatmap: MIDI × frequency band, one panel per condition
+
+heatmap_matrices = {}
+for condition in CONDITION_SUFFIX:
+    cond_df = exp_band_levels_df.loc[exp_band_levels_df["condition"] == condition]
+    heatmap_matrices[condition] = cond_df.pivot(
+        index="midi", columns="band", values="level_db"
+    ).sort_index()
+
+level_vmin = exp_band_levels_df["level_db"].min()
+level_vmax = exp_band_levels_df["level_db"].max()
+
+fig, axes = plt.subplots(2, 2, figsize=(max(10, _exp_n_bands * 0.7) * 1.6, 12))
+axes = axes.flatten()
+heatmap_img = None
+
+for ax, condition in zip(axes, CONDITION_SUFFIX):
+    heatmap_img = ax.imshow(
+        heatmap_matrices[condition],
+        aspect="auto",
+        origin="lower",
+        cmap="magma",
+        vmin=level_vmin,
+        vmax=level_vmax,
+        extent=(-0.5, _exp_n_bands - 0.5, midi_min - 0.5, midi_max + 0.5),
+    )
+    ax.set_title(condition, fontsize=label_fontsize)
+    ax.set_xticks(_exp_band_positions)
+    ax.set_xticklabels(_exp_band_labels, rotation=45, ha="right", fontsize=tick_fontsize)
+    ax.set_xlabel("Frequency band center (kHz)", fontsize=label_fontsize)
+    ax.set_ylabel("MIDI note", fontsize=label_fontsize)
+    ax.tick_params(axis="y", labelsize=tick_fontsize)
+
+cbar = fig.colorbar(heatmap_img, ax=axes, shrink=0.9, pad=0.02)
+cbar.set_label("Band level (dB SPL)", fontsize=label_fontsize)
+cbar.ax.tick_params(labelsize=tick_fontsize)
+fig.savefig(f"{PLOT_DIR}/experiment_tones_band_levels_heatmap.svg", dpi=300, bbox_inches="tight")
+fig.savefig(f"{PLOT_DIR}/experiment_tones_band_levels_heatmap.png", dpi=300, bbox_inches="tight")
+plt.close(fig)
 
 # ================================================
 # 3. KEMAR HRTF ANALYSIS (PARISE-STYLE)
