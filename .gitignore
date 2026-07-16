@@ -1,3 +1,5 @@
 # macOS folder metadata (ignore in repo root and all subfolders)
 .DS_Store
 **/.DS_Store
+
+stimuli/naturalsounds165_scene_eq/

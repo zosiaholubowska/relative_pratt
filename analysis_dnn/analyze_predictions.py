@@ -62,6 +62,7 @@ for path in paths:
     frames.append(df)
 
 all_pred = pandas.concat(frames, ignore_index=True)
+all_pred = all_pred[all_pred.get("true_azim", 0) == 0]
 print(all_pred.groupby("condition").size())
 
 corr_rows_midi = []

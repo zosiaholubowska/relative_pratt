@@ -339,7 +339,7 @@ fig, axes = plt.subplots(2, 2, figsize=(max(10, _exp_n_bands * 0.7) * 1.6, 12))
 axes = axes.flatten()
 heatmap_img = None
 
-for ax, condition in zip(axes, CONDITION_SUFFIX):
+for idx, (ax, condition) in enumerate(zip(axes, CONDITION_SUFFIX)):
     heatmap_img = ax.imshow(
         heatmap_matrices[condition],
         aspect="auto",
@@ -352,9 +352,20 @@ for ax, condition in zip(axes, CONDITION_SUFFIX):
     ax.set_title(condition, fontsize=label_fontsize)
     ax.set_xticks(_exp_band_positions)
     ax.set_xticklabels(_exp_band_labels, rotation=45, ha="right", fontsize=tick_fontsize)
-    ax.set_xlabel("Frequency band center (kHz)", fontsize=label_fontsize)
-    ax.set_ylabel("MIDI note", fontsize=label_fontsize)
-    ax.tick_params(axis="y", labelsize=tick_fontsize)
+    # Only label x-axis for bottom row and y-axis for left column
+    nrows, ncols = 2, 2
+    row, col = divmod(idx, ncols)
+    if row == nrows - 1:
+        ax.set_xlabel("Frequency band center (kHz)", fontsize=label_fontsize)
+    else:
+        ax.set_xlabel("")
+        ax.set_xticklabels([])
+    if col == 0:
+        ax.set_ylabel("MIDI note", fontsize=label_fontsize)
+        ax.tick_params(axis="y", labelsize=tick_fontsize)
+    else:
+        ax.set_ylabel("")
+        ax.set_yticklabels([])
 
 cbar = fig.colorbar(heatmap_img, ax=axes, shrink=0.9, pad=0.02)
 cbar.set_label("Band level (dB SPL)", fontsize=label_fontsize)
