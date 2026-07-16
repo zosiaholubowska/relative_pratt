@@ -168,4 +168,6 @@ for idx, elevation in enumerate(ELEVATIONS):
     axs[idx].tick_params(axis='x', rotation=45)
 
 plt.tight_layout()
-plt.show()
+plt.savefig(f'{PLOT_DIR}/scene_eq_example.svg', dpi=300)
+plt.savefig(f'{PLOT_DIR}/scene_eq_example.png', dpi=300)
+plt.close(fig)
