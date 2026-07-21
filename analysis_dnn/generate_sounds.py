@@ -16,6 +16,7 @@ SAMPLING_RATE = 44100
 # pink noise
 
 pink_noise = slab.Sound.pinknoise(duration=DURATION, samplerate=SAMPLING_RATE, n_channels=2)
+pink_noise = pink_noise.ramp(duration=0.01)
 pink_noise.write(os.path.join(OUTPUT_DIR, 'pink_noise.wav'))
 
 # narrow band noise
@@ -43,5 +44,6 @@ for band in range(_n_bands):
         high_cutoff=_band_high_hz[band],
         samplerate=SAMPLING_RATE,
     )
-    band_noise.spectrum(show=True)
+    # band_noise.spectrum(show=True)
+    band_noise = band_noise.ramp(duration=0.01)
     band_noise.write(os.path.join(OUTPUT_DIR, f'band_{band}_noise.wav'))
