@@ -47,3 +47,24 @@ for band in range(_n_bands):
     # band_noise.spectrum(show=True)
     band_noise = band_noise.ramp(duration=0.01)
     band_noise.write(os.path.join(OUTPUT_DIR, f'band_{band}_noise.wav'))
+
+# fixed kHz band-pass noise (<0.8; 0.8–1.4; 1.4–2.5; 2.5–4.5; 4.5–8; >8 kHz)
+
+KHZ_BANDS = [
+    ("lt_0.8", 100, 800),
+    ("0.8_1.4", 800, 1400),
+    ("1.4_2.5", 1400, 2500),
+    ("2.5_4.5", 2500, 4500),
+    ("4.5_8", 4500, 8000),
+    ("gt_8", 8000, SAMPLING_RATE // 2),
+]
+
+for label, low_hz, high_hz in KHZ_BANDS:
+    band_noise = slab.Sound.equally_masking_noise(
+        duration=DURATION,
+        low_cutoff=low_hz,
+        high_cutoff=high_hz,
+        samplerate=SAMPLING_RATE,
+    )
+    band_noise = band_noise.ramp(duration=0.01)
+    band_noise.write(os.path.join(OUTPUT_DIR, f'khz_band_{label}_noise.wav'))
