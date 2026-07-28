@@ -51,21 +51,6 @@ def flip_hrtf_elevation(hrtf):
     return flipped
 
 
-def room_brir(room, hrtf=None, flip_elevation=False, trim=5000, **hrir_kwargs):
-    """Build a BRIR for a Room, optionally using a vertically flipped HRTF."""
-    if hrtf is None:
-        hrtf = slab.HRTF.kemar()
-    if flip_elevation:
-        hrtf = flip_hrtf_elevation(crop_hrtf_elevation(hrtf))
-    return room.hrir(hrtf=hrtf, trim=trim, **hrir_kwargs)
-
-
-def spatialize_with_room(sound, room, hrtf=None, flip_elevation=False, trim=5000, **hrir_kwargs):
-    """Apply room simulation to a monaural sound."""
-    brir = room_brir(room, hrtf=hrtf, flip_elevation=flip_elevation, trim=trim, **hrir_kwargs)
-    return brir.apply(sound)
-
-
 hrtf = crop_hrtf_elevation(slab.HRTF.kemar())
 hrtf_flipped = flip_hrtf_elevation(hrtf)
 
@@ -87,18 +72,16 @@ plt.tight_layout()
 plt.savefig(os.path.join(DIR, "plots","hrtf_flip.png"))
 
 
-# Room simulation with flipped HRTF: pass hrtf= to room.hrir() (Room has no separate flip API)
+# Room simulation with flipped HRTF: pass hrtf= to room.hrir()
 room = slab.Room(
     size=[4, 5, 3],
     listener=[2, 2.5, 1.4],
     source=[0, 25, 1.4],  # azimuth, elevation (°), distance (m) relative to listener
 )
 
-# option 1: pass the flipped HRTF directly
-brir_flipped = room.hrir(hrtf=hrtf_flipped, trim=5000)
+# binaural room impulse response (BRIR) 
 
-# option 2: use helpers
-# brir_flipped = room_brir(room, flip_elevation=True, trim=5000)
+brir_flipped = room.hrir(hrtf=hrtf_flipped, trim=5000)
 
 sound = slab.Sound.pinknoise(duration=0.5, samplerate=hrtf.samplerate)
 binaural_normal = room.hrir(hrtf=hrtf, trim=5000).apply(sound)
