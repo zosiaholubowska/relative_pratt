@@ -147,14 +147,18 @@ def compare_slope_vectors(beh_slopes, dnn_slopes):
     }
 
 
-paths = sorted(glob.glob(os.path.join(DIR, "analysis_dnn", "regression_predictions_*_tones.csv")))
+#paths = sorted(glob.glob(os.path.join(DIR, "analysis_dnn", "regression_predictions_*_tones.csv")))
+paths = sorted(glob.glob(os.path.join(DIR, "analysis_dnn", "regression_predictions_*_bias.csv")))
+
 if not paths:
     raise FileNotFoundError(f"No regression_predictions_*_tones.csv in {DIR}")
 
 frames = []
 for path in paths:
     base = os.path.basename(path)
-    m = re.match(r"regression_predictions_(.+)_tones\.csv$", base, re.IGNORECASE)
+    if base=='regression_predictions_artificial_sounds_bias.csv':
+        continue
+    m = re.match(r"regression_predictions_(.+)_(tones|bias)\.csv$", base, re.IGNORECASE)
     if not m:
         raise ValueError(f"Unexpected filename: {base!r}")
     cond = m.group(1).lower()

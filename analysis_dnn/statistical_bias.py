@@ -24,7 +24,7 @@ EQ_KWARGS = dict(
     f_low=400.0,        
     f_high=6300.0,      
     sigma_octaves=1.2,  
-    peak_gain_db=12,   # pilot: 3, 6, 9
+    peak_gain_db=24,   # pilot: 3, 6, 9
 )
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 

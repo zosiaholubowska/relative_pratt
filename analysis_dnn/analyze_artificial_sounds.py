@@ -7,6 +7,8 @@ import numpy as np
 import pandas
 import seaborn as sns
 
+mode = "test"
+
 
 PINK_NOISE_FILENAME = "pink_noise.wav"
 
@@ -219,7 +221,8 @@ plt.rcParams["svg.fonttype"] = "none"
 DIR = os.getcwd()
 PLOT_DIR = os.path.join(DIR, "plots")
 
-pred_path = os.path.join(DIR, "analysis_dnn", "regression_predictions_artificial_sounds.csv")
+#pred_path = os.path.join(DIR, "analysis_dnn", "regression_predictions_artificial_sounds.csv")
+pred_path = os.path.join(DIR, "analysis_dnn", f"regression_predictions_artificial_sounds_{mode}.csv")
 pred_df = pandas.read_csv(pred_path)
 need = {"filename", "true_elev", "pred_elev"}
 if need - set(pred_df.columns):
@@ -282,8 +285,8 @@ ax_erb1.set_ylabel("Predicted elevation − true elevation")
 
 fig_art1.suptitle("DNN elevation error by artificial sound", y=1.01)
 plt.tight_layout()
-out_art1_png = os.path.join(PLOT_DIR, "dnn_artificial_elevation_error_by_filename.png")
-out_art1_svg = os.path.join(PLOT_DIR, "dnn_artificial_elevation_error_by_filename.svg")
+out_art1_png = os.path.join(PLOT_DIR, f"dnn_artificial_elevation_error_by_filename_{mode}.png")
+out_art1_svg = os.path.join(PLOT_DIR, f"dnn_artificial_elevation_error_by_filename_{mode}.svg")
 plt.savefig(out_art1_png, dpi=200, bbox_inches="tight")
 plt.savefig(out_art1_svg, bbox_inches="tight")
 plt.close()
@@ -305,8 +308,8 @@ ax_erb2.legend(title="Sound", bbox_to_anchor=(1.02, 1.0), loc="upper left", fram
 
 fig_art2.suptitle("DNN elevation: true vs. predicted (artificial sounds)", y=1.02)
 plt.tight_layout()
-out_art2_png = os.path.join(PLOT_DIR, "dnn_artificial_true_vs_pred_elevation.png")
-out_art2_svg = os.path.join(PLOT_DIR, "dnn_artificial_true_vs_pred_elevation.svg")
+out_art2_png = os.path.join(PLOT_DIR, f"dnn_artificial_true_vs_pred_elevation_{mode}.png")
+out_art2_svg = os.path.join(PLOT_DIR, f"dnn_artificial_true_vs_pred_elevation_{mode}.svg")
 plt.savefig(out_art2_png, dpi=200, bbox_inches="tight")
 plt.savefig(out_art2_svg, bbox_inches="tight")
 plt.close()
@@ -354,8 +357,8 @@ ax_erb3.set_ylabel("Predicted elevation")
 
 fig_art3.suptitle("DNN predicted elevation by artificial sound", y=1.01)
 plt.tight_layout()
-out_art3_png = os.path.join(PLOT_DIR, "dnn_artificial_pred_elevation_by_filename.png")
-out_art3_svg = os.path.join(PLOT_DIR, "dnn_artificial_pred_elevation_by_filename.svg")
+out_art3_png = os.path.join(PLOT_DIR, f"dnn_artificial_pred_elevation_by_filename_{mode}.png")
+out_art3_svg = os.path.join(PLOT_DIR, f"dnn_artificial_pred_elevation_by_filename_{mode}.svg")
 plt.savefig(out_art3_png, dpi=200, bbox_inches="tight")
 plt.savefig(out_art3_svg, bbox_inches="tight")
 plt.close()
