@@ -14,6 +14,7 @@ Usage:
 """
 
 import os
+import csv
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
@@ -32,33 +33,57 @@ DATASETS = {
                       'n_freq': 39, 'n_time': 8000, 'n_ears': 2},
 }
 
-SPLIT = 'train'          # 'train' or 'test'
+SPLIT = 'test'            # which file to open: 'train' or 'test'
+FEATURE_KEY_PREFIX = 'train'  # prefix used INSIDE the tf.train.Example features
+                               # (appears to always be 'train/...' regardless of
+                               # which file/split you're reading -- confirmed by
+                               # the 'test/image' KeyError when SPLIT='test')
 COMPRESSION = 'GZIP'      # set to None if files turn out not to be gzip-compressed
 N_SAMPLES = 200           # how many records to average over per dataset
 DTYPE = np.float32        # matches how the bytes were written
 
+PLOTS_DIR = os.path.join(os.getcwd(), 'plots')      # figures saved here
+RESULTS_DIR = os.path.join(os.getcwd(), 'Results')  # CSVs saved here
+os.makedirs(PLOTS_DIR, exist_ok=True)
+os.makedirs(RESULTS_DIR, exist_ok=True)
+
 # --------------------------------------------------------------------------
 
 
-def load_frequency_profiles(data_dir, split, n_freq, n_time, n_ears,
+def load_frequency_profiles(data_dir, split, key_prefix, n_freq, n_time, n_ears,
                              compression, n_samples, dtype):
     """
     Reads up to n_samples records from {split}_cochleagrams.tfrecord,
-    decodes the 'train/image' bytes field, reshapes to (n_freq, n_time, n_ears),
-    and returns:
+    decodes the '{key_prefix}/image' bytes field, reshapes to
+    (n_freq, n_time, n_ears), and returns:
         profiles: array (n_samples_actual, n_freq) -- mean energy per freq
                   channel per sample (averaged over time and ears)
+
+    Note: `split` picks which FILE to open (train_cochleagrams.tfrecord vs
+    test_cochleagrams.tfrecord). `key_prefix` is the prefix used INSIDE the
+    tf.train.Example features (e.g. 'train/image') -- these are independent
+    since some pipelines write every file's records with the same internal
+    key prefix regardless of which file/split they end up in.
     """
     path = os.path.join(data_dir, f'{split}_cochleagrams.tfrecord')
     ds = tf.data.TFRecordDataset(path, compression_type=compression)
 
     expected_bytes = n_freq * n_time * n_ears * np.dtype(dtype).itemsize
     profiles = []
+    image_key = f'{key_prefix}/image'
 
     for i, raw in enumerate(ds.take(n_samples)):
         ex = tf.train.Example.FromString(raw.numpy())
         feat = ex.features.feature
-        img_bytes = feat[f'{split}/image'].bytes_list.value[0]
+
+        if image_key not in feat or len(feat[image_key].bytes_list.value) == 0:
+            available = list(feat.keys())
+            raise KeyError(
+                f"Sample {i} in {path}: key '{image_key}' not found or empty. "
+                f"Available keys in this record: {available}. "
+                f"Set FEATURE_KEY_PREFIX to match the prefix shown above."
+            )
+        img_bytes = feat[image_key].bytes_list.value[0]
 
         if len(img_bytes) != expected_bytes:
             raise ValueError(
@@ -80,7 +105,7 @@ def main():
     for name, cfg in DATASETS.items():
         print(f"Loading {name} from {cfg['dir']} ...")
         profiles = load_frequency_profiles(
-            cfg['dir'], SPLIT, cfg['n_freq'], cfg['n_time'], cfg['n_ears'],
+            cfg['dir'], SPLIT, FEATURE_KEY_PREFIX, cfg['n_freq'], cfg['n_time'], cfg['n_ears'],
             COMPRESSION, N_SAMPLES, DTYPE
         )
         results[name] = profiles
@@ -126,7 +151,7 @@ def main():
     axes[1].set_title('Low/mid/high frequency band energy by dataset')
 
     plt.tight_layout()
-    out_path = os.path.join(os.path.expanduser('~'), 'cochleagram_frequency_comparison.png')
+    out_path = os.path.join(PLOTS_DIR, 'cochleagram_frequency_comparison.png')
     plt.savefig(out_path, dpi=150)
     print(f"Saved comparison figure to {out_path}")
     plt.show()
@@ -182,10 +207,23 @@ def main():
           "correction (e.g. Bonferroni: p < 0.05/{}={:.4g}) before drawing "
           "strong conclusions about individual channels.".format(n_freq, 0.05 / n_freq))
 
+    # ---- Save per-channel results to CSV ----
+    channel_csv_path = os.path.join(RESULTS_DIR, f'cochleagram_channel_comparison_{SPLIT}.csv')
+    with open(channel_csv_path, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['channel', f'mean_{name_a}', f'mean_{name_b}',
+                          'pct_diff', 'cohens_d', 'p_value', 'significant_p05'])
+        for ch in range(n_freq):
+            writer.writerow([ch, f'{mean_a[ch]:.6f}', f'{mean_b[ch]:.6f}',
+                              f'{pct_diff[ch]:.2f}', f'{cohens_d[ch]:.3f}',
+                              f'{p_values[ch]:.6g}', p_values[ch] < 0.05])
+    print(f"\n  Saved per-channel results to {channel_csv_path}")
+
     # ---- Band-level comparison (coarser, easier to interpret) ----
     print("\n" + "=" * 70)
     print("FREQUENCY-BAND COMPARISON (low / mid / high thirds of channels)")
     print("=" * 70)
+    band_rows = []
     for band_name, s in bands.items():
         band_a = prof_a[:, s].mean(axis=1)
         band_b = prof_b[:, s].mean(axis=1)
@@ -196,6 +234,17 @@ def main():
         print(f"  {band_name:5s} (ch {s.start:>2}-{s.stop - 1:<2}): "
               f"{name_a}={band_a.mean():.4f}  {name_b}={band_b.mean():.4f}  "
               f"diff={pct:+.1f}%  cohens_d={d:.2f}  p={p:.4g}")
+        band_rows.append([band_name, f'{s.start}-{s.stop - 1}',
+                           f'{band_a.mean():.6f}', f'{band_b.mean():.6f}',
+                           f'{pct:.2f}', f'{d:.3f}', f'{p:.6g}', p < 0.05])
+
+    band_csv_path = os.path.join(RESULTS_DIR, 'cochleagram_band_comparison.csv')
+    with open(band_csv_path, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['band', 'channel_range', f'mean_{name_a}', f'mean_{name_b}',
+                          'pct_diff', 'cohens_d', 'p_value', 'significant_p05'])
+        writer.writerows(band_rows)
+    print(f"\n  Saved band-level results to {band_csv_path}")
 
     # ---- Which channel differs most? ----
     top_ch = np.argsort(-np.abs(cohens_d))[:5]
