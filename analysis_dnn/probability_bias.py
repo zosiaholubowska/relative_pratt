@@ -99,12 +99,7 @@ manifest_rows = []
 for repeat_idx in range(10):
     for elevation in ELEVATIONS:
         pick = pick_sound_for_elevation(centroid_df, elevation, rng)
-        src = os.path.join(TRAINING_STIM_DIR, pick["stimulus"])
-        stem = os.path.splitext(pick["stimulus"])[0]
-        out_name = f"{stem}_{int(elevation)}deg_rep{repeat_idx+1}.wav"
-        shutil.copy2(src, os.path.join(OUTPUT_DIR, out_name))
-        pick = pick.copy()  # Ensure each entry is distinct per repetition
-        pick["output_file"] = out_name
+        pick = pick.copy()
         pick["repeat_index"] = repeat_idx + 1
         manifest_rows.append(pick)
         print(
