@@ -47,6 +47,23 @@ def spectral_centroid(x, sr):
     return float(np.mean(cent))
 
 
+def mean_f0_pyin(x, sr, fmin=None, fmax=None):
+    """Mean F0 (Hz) over pyin frames marked voiced; NaN if none."""
+    if fmin is None:
+        fmin = librosa.note_to_hz("C2")
+    if fmax is None:
+        fmax = librosa.note_to_hz("C7")
+    f0, voiced_flag, _ = librosa.pyin(
+        x, fmin=fmin, fmax=fmax, sr=sr, hop_length=512
+    )
+    f0_voiced = f0[voiced_flag]
+    f0_voiced = f0_voiced[~np.isnan(f0_voiced)]
+    voiced_fraction = float(np.mean(voiced_flag))
+    if f0_voiced.size == 0:
+        return np.nan, voiced_fraction
+    return float(np.mean(f0_voiced)), voiced_fraction
+
+
 def mono_sound(sound):
     x = np.asarray(sound.data).squeeze()
     if x.ndim == 2:
@@ -107,6 +124,84 @@ plt.tight_layout()
 plt.savefig(f'{PLOT_DIR}/spectral_centroid_distribution.svg', dpi=300)
 plt.savefig(f'{PLOT_DIR}/spectral_centroid_distribution.png', dpi=300)
 plt.close()
+
+
+# ================================================
+# 2.1a. SPECTRAL CENTROID VS. F0 (PYIN) — NATURALSOUNDS165
+# ================================================
+
+centroid_f0_rows = []
+for tfile in TRAINING_TONES:
+    tpath = os.path.join(TRAINING_STIM_DIR, tfile)
+    tsound = slab.Sound(tpath)
+    print(tfile)
+    x_ = np.asarray(tsound.data).squeeze()
+    x_ = x_.mean(axis=1) if x_.ndim == 2 else x_
+    sr_ = int(tsound.samplerate)
+    spec_cent = spectral_centroid(x_, sr_)
+    f0_hz, voiced_frac = mean_f0_pyin(x_, sr_)
+    centroid_f0_rows.append(
+        {
+            "stimulus": tfile,
+            "spectral_centroid_hz": spec_cent,
+            "f0_hz": f0_hz,
+            "pyin_voiced_fraction": voiced_frac,
+        }
+    )
+
+centroid_f0_df = pd.DataFrame(centroid_f0_rows)
+centroid_f0_df.to_csv(f"{RESULTS_DIR}/naturalsounds165_centroid_vs_f0.csv", index=False)
+
+valid = centroid_f0_df.dropna(subset=["f0_hz"])
+n_valid = len(valid)
+r_pearson = valid["f0_hz"].corr(valid["spectral_centroid_hz"], method="pearson")
+r_spearman = valid["f0_hz"].corr(valid["spectral_centroid_hz"], method="spearman")
+p_pearson = float("nan")
+if n_valid >= 3 and not np.isnan(r_pearson):
+    try:
+        from scipy.stats import pearsonr
+
+        _, p_pearson = pearsonr(valid["f0_hz"].to_numpy(), valid["spectral_centroid_hz"].to_numpy())
+    except ImportError:
+        pass
+
+print("\nnaturalsounds165: spectral centroid vs. pyin F0")
+print(f"  Stimuli with voiced F0: {n_valid} / {len(centroid_f0_df)}")
+print(f"  Pearson r = {r_pearson:.3f}, p = {p_pearson:.4g} (n = {n_valid})")
+print(f"  Spearman rho = {r_spearman:.3f} (n = {n_valid})")
+
+fig, ax = plt.subplots(figsize=(6.5, 5))
+ax.scatter(
+    valid["f0_hz"],
+    valid["spectral_centroid_hz"],
+    s=36,
+    alpha=0.75,
+    edgecolors="k",
+    linewidths=0.35,
+)
+ax.set_xscale("log")
+ax.set_yscale("log")
+ax.set_xlabel("Mean F0 (Hz, librosa.pyin, voiced frames)")
+ax.set_ylabel("Spectral centroid (Hz)")
+ax.set_title("naturalsounds165: spectral centroid vs. fundamental frequency")
+stat_text = f"Pearson r = {r_pearson:.2f}\nSpearman ρ = {r_spearman:.2f}\nn = {n_valid}"
+if not np.isnan(p_pearson):
+    stat_text += f"\np = {p_pearson:.3g}"
+ax.text(
+    0.04,
+    0.96,
+    stat_text,
+    transform=ax.transAxes,
+    va="top",
+    ha="left",
+    fontsize=10,
+    bbox=dict(boxstyle="round,pad=0.35", facecolor="white", edgecolor="0.8", alpha=0.9),
+)
+ax.grid(True, which="both", alpha=0.25)
+fig.tight_layout()
+fig.savefig(f"{PLOT_DIR}/naturalsounds165_centroid_vs_f0.svg", dpi=300)
+fig.savefig(f"{PLOT_DIR}/naturalsounds165_centroid_vs_f0.png", dpi=300)
+plt.close(fig)
 
 
 # ================================================
