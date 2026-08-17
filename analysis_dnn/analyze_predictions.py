@@ -148,7 +148,7 @@ def compare_slope_vectors(beh_slopes, dnn_slopes):
 
 
 #paths = sorted(glob.glob(os.path.join(DIR, "analysis_dnn", "regression_predictions_*_tones.csv")))
-paths = sorted(glob.glob(os.path.join(DIR, "analysis_dnn", "regression_predictions_*_bias.csv")))
+paths = sorted(glob.glob(os.path.join(DIR, "analysis_dnn", "regression_output", "regression_predictions_*_hrtf_flipped.csv")))
 
 if not paths:
     raise FileNotFoundError(f"No regression_predictions_*_tones.csv in {DIR}")
@@ -156,9 +156,9 @@ if not paths:
 frames = []
 for path in paths:
     base = os.path.basename(path)
-    if base=='regression_predictions_artificial_sounds_bias.csv':
+    if base=='regression_predictions_artificial_sounds_hrtf_flipped.csv':
         continue
-    m = re.match(r"regression_predictions_(.+)_(tones|bias)\.csv$", base, re.IGNORECASE)
+    m = re.match(r"regression_predictions_(.+)_(tones|bias|hrtf_flipped)\.csv$", base, re.IGNORECASE)
     if not m:
         raise ValueError(f"Unexpected filename: {base!r}")
     cond = m.group(1).lower()
@@ -291,105 +291,3 @@ plt.savefig(out_reg_svg, bbox_inches="tight")
 plt.close()
 print(f"Wrote {out_reg_png}")
 print(f"Wrote {out_reg_svg}")
-
-# compare DNN and behavioural data (Pratt slope: frequency vs. elevation error)
-
-beh_data = pandas.read_csv(os.path.join(DIR, "Results", "data.csv"))
-beh_data = beh_data[~beh_data["subject"].str.contains("pilot", na=False)]
-beh_data = beh_data[~beh_data["subject"].str.contains("00", na=False)]
-beh_data = beh_data[beh_data["azimuth_ls"] == 0]
-beh_data = beh_data[beh_data["condition"].isin(BEH_TO_DNN_CONDITION)]
-beh_data["frequency_hz"] = beh_data["frequency"].round(0)
-
-beh_slopes = participant_frequency_slopes(
-    beh_data,
-    condition_col="condition",
-    subject_col="subject",
-    x_col="frequency_hz",
-    y_col="elevation_diff",
-)
-dnn_beh = all_pred.copy()
-
-print("\nPratt slope comparison: participant slopes vs. bootstrapped DNN slopes")
-print("Model: elevation error ~ frequency (error = response − loudspeaker for beh; pred − true for DNN)")
-print(f"DNN subset: azimuth = 0° ({len(dnn_beh)} predictions)")
-with pandas.option_context("display.max_columns", None, "display.width", 120):
-    print("\nParticipant slopes per condition:")
-    print(
-        beh_slopes.groupby("condition")["slope"]
-        .agg(n_subjects="count", mean="mean", std="std")
-        .to_string()
-    )
-
-rng = np.random.default_rng(BOOTSTRAP_SEED)
-slope_compare_rows = []
-bootstrap_rows = []
-for beh_cond, dnn_cond in BEH_TO_DNN_CONDITION.items():
-    beh_cond_slopes = beh_slopes.loc[beh_slopes["condition"] == beh_cond, "slope"].to_numpy()
-    n_subjects = len(beh_cond_slopes)
-    if n_subjects == 0:
-        continue
-
-    dnn_slopes = bootstrap_dnn_slopes(
-        dnn_beh,
-        dnn_cond,
-        n_subjects,
-        x_col="frequency_hz",
-        y_col="elev_error",
-        rng=rng,
-    )
-    point = compare_slope_vectors(beh_cond_slopes, dnn_slopes)
-    point.update({"condition": beh_cond, "dnn_condition": dnn_cond, "bootstrap": "point"})
-    slope_compare_rows.append(point)
-
-    rep_r = []
-    rep_p = []
-    for _ in range(BOOTSTRAP_REPLICATES):
-        dnn_boot = bootstrap_dnn_slopes(
-            dnn_beh,
-            dnn_cond,
-            n_subjects,
-            x_col="frequency_hz",
-            y_col="elev_error",
-            rng=rng,
-        )
-        stats = compare_slope_vectors(beh_cond_slopes, dnn_boot)
-        if np.isfinite(stats["pearson_r"]):
-            rep_r.append(stats["pearson_r"])
-        if np.isfinite(stats["t_p_two_sided"]):
-            rep_p.append(stats["t_p_two_sided"])
-
-    bootstrap_rows.append(
-        {
-            "condition": beh_cond,
-            "n_subjects": n_subjects,
-            "n_dnn_trials": int((dnn_beh["condition"] == dnn_cond).sum()),
-            "r_median": float(np.median(rep_r)) if rep_r else float("nan"),
-            "r_ci2.5": float(np.percentile(rep_r, 2.5)) if rep_r else float("nan"),
-            "r_ci97.5": float(np.percentile(rep_r, 97.5)) if rep_r else float("nan"),
-            "t_p_median": float(np.median(rep_p)) if rep_p else float("nan"),
-        }
-    )
-
-slope_compare_df = pandas.DataFrame(slope_compare_rows)[
-    [
-        "condition",
-        "n",
-        "mean_beh_slope",
-        "mean_dnn_slope",
-        "mean_diff_beh_minus_dnn",
-        "pearson_r",
-        "r_p_two_sided",
-        "t_statistic",
-        "t_p_two_sided",
-    ]
-]
-bootstrap_df = pandas.DataFrame(bootstrap_rows)
-
-print("\nPoint comparison (one bootstrap draw of N DNN slopes per condition, N = n participants):")
-with pandas.option_context("display.max_columns", None, "display.width", 140, "float_format", "{:.6f}".format):
-    print(slope_compare_df.to_string(index=False))
-
-print(f"\nBootstrap summary over {BOOTSTRAP_REPLICATES} replicates (correlation / paired t-test p-value):")
-with pandas.option_context("display.max_columns", None, "display.width", 140, "float_format", "{:.6f}".format):
-    print(bootstrap_df.to_string(index=False))

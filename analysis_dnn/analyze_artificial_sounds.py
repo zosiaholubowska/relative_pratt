@@ -7,7 +7,7 @@ import numpy as np
 import pandas
 import seaborn as sns
 
-mode = "test"
+mode = "hrtf_flipped"
 
 
 PINK_NOISE_FILENAME = "pink_noise.wav"
@@ -222,7 +222,7 @@ DIR = os.getcwd()
 PLOT_DIR = os.path.join(DIR, "plots")
 
 #pred_path = os.path.join(DIR, "analysis_dnn", "regression_predictions_artificial_sounds.csv")
-pred_path = os.path.join(DIR, "analysis_dnn", f"regression_predictions_artificial_sounds_{mode}.csv")
+pred_path = os.path.join(DIR, "analysis_dnn", "regression_output", f"regression_predictions_artificial_sounds_{mode}.csv")
 pred_df = pandas.read_csv(pred_path)
 need = {"filename", "true_elev", "pred_elev"}
 if need - set(pred_df.columns):
