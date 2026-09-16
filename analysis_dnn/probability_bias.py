@@ -23,10 +23,10 @@ MANIFEST_PATH = f"{RESULTS_DIR}/naturalsounds165_probability_bias_manifest.csv"
 
 ELEV_MIN = 0.0
 ELEV_MAX = 60.0
-N_LOCATIONS_PER_SOUND = 10
+N_LOCATIONS_PER_SOUND = 100
 RNG_SEED = 42
 # Gaussian width on centroid axis in the old sound-selection formulation; converted to ° on elevation
-SIGMA_HZ = 1600.0
+SIGMA_HZ = 2100.0
 
 os.makedirs(RESULTS_DIR, exist_ok=True)
 

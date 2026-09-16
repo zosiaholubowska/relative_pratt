@@ -17,7 +17,7 @@ plt.rcParams["svg.fonttype"] = "none"
 
 if "__file__" in globals():
     DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-else:  # pasted into an interactive session: assume the repo root is the cwd
+else:  
     DIR = os.getcwd()
 RESULTS_DIR = f"{DIR}/Results"
 PLOT_DIR = f"{DIR}/plots"
@@ -109,7 +109,7 @@ def plot_split(split, centroid_df, cent_min, cent_max):
     ax.set_xlabel("Spectral centroid (Hz)")
     ax.set_ylabel("Presentation elevation (°)")
     ax.set_title(
-        f"Realised elevation vs centroid ({split} set)\n"
+        f"Elevation vs centroid ({split} set)\n"
         f"r = {fit.rvalue:.3f}, {fit.slope * 1000:.2f}°/kHz",
         fontsize=10,
     )
