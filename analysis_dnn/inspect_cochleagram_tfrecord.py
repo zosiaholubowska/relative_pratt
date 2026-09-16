@@ -18,7 +18,7 @@ from tqdm import tqdm
 
 # EDIT THESE:
 PATH = "/home/neurobio/Repositories/RegressiveBinauralLocalizationCNN/data/cochleagrams/naturalsounds165_slab_kemar_front/test_cochleagrams.tfrecord"
-OUT_CSV = "stimulus_locations_test.csv"
+OUT_CSV = "analysis_dnn/Results/stimulus_locations_test.csv"
 
 feature_description = {
     "train/name": tf.io.FixedLenFeature([], tf.string),
