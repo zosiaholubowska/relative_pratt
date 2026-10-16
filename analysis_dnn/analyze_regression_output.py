@@ -74,9 +74,9 @@ print("\nCorrelation between centroid and elevation difference:")
 for model in per_sound["model"].unique():
     df_model = per_sound[per_sound["model"] == model]
     r,p = pearsonr(df_model["centroid_khz"], df_model["elevation_diff"])
-    print(f"  {model}: r = {r:.3f}, p = {p:.3g}")
+    print(f"  {model}: Pearson's r = {r:.3f}, p = {p:.3g}")
     r,p = spearmanr(df_model["centroid_khz"], df_model["elevation_diff"])
-    print(f"  {model}: r = {r:.3f}, p = {p:.3g}")
+    print(f"  {model}: Spearman's r = {r:.3f}, p = {p:.3g}")
 
 # ------------------------------------------------------------
 # Plot the frequency - elevation mapping
@@ -107,7 +107,7 @@ plt.show()
 # Compute the correlation with f0 MIDI
 # ------------------------------------------------------------------------------------------------
 
-midi_analysis = input("Do you want to analyze the correlation with f0 MIDI? (y/n:")
+midi_analysis = input("Do you want to analyze the correlation with f0 MIDI? (y/n):")
 if midi_analysis == "y":
     df["midi_note"] = df["filename"].str.extract(r"stim_(\d+)_", expand=False).astype(float)
     per_sound["midi_note"] = per_sound["filename"].str.extract(r"stim_(\d+)_", expand=False).astype(float)
@@ -116,5 +116,5 @@ if midi_analysis == "y":
     for model in per_sound["model"].unique():
         df_model = per_sound[per_sound["model"] == model]
         r,p = pearsonr(df_model["midi_note"], df_model["elevation_diff"])
-        print(f"  {model}: r = {r:.3f}, p = {p:.3g}")
+        print(f"  {model}: Pearson's r = {r:.3f}, p = {p:.3g}")
 
