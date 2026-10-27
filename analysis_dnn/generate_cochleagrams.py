@@ -207,7 +207,9 @@ def generate_cochleagrams(config: Config, stim_path: Path, hrtf_label: str):
                         elev_max = config.generate_cochleagrams.source_positions.elevations[-1]
                         print(elev_min, elev_max)
                         current_centroid = float(centroids.loc[single_stim_path, "spectral_centroid_hz"])
-                        elevation_distribution = compute_elevation_distribution_for_centroid(current_centroid, cent_min, cent_max, elev_min, elev_max, sigma_elev=sigma_elev)
+                        elevation_distribution = compute_elevation_distribution_for_centroid(current_centroid, cent_min, cent_max, elev_min, elev_max,
+                                                                                             sigma_elev=sigma_elev,
+                                                                                             reverse=config.generate_cochleagrams.reverse_probability_bias)
                     else:
                         elevation_distribution = None
                 else:

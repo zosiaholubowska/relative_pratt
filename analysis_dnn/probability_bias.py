@@ -51,9 +51,11 @@ def build_centroid_table(stim_paths):
     return pd.DataFrame(rows).set_index("stimulus")
 
 
-def centroid_to_target_elevation(centroid_hz, cent_min, cent_max, elev_min, elev_max):
+def centroid_to_target_elevation(centroid_hz, cent_min, cent_max, elev_min, elev_max, reverse=False):
     centroid_hz = np.clip(centroid_hz, cent_min, cent_max)
     t = (centroid_hz - cent_min) / (cent_max - cent_min)
+    if reverse:
+        t = 1.0 - t
     return elev_min + t * (elev_max - elev_min)
 
 
@@ -83,11 +85,12 @@ def compute_elevation_distribution_for_centroid(
     elev_max=ELEV_MAX,
     sigma_elev=None,
     elevation_grid=None,
+    reverse=False,
 ):
     if elevation_grid is None:
         elevation_grid = np.linspace(elev_min, elev_max, int(elev_max - elev_min) + 1)
     target_elev = centroid_to_target_elevation(
-        centroid_hz, cent_min, cent_max, elev_min, elev_max
+        centroid_hz, cent_min, cent_max, elev_min, elev_max, reverse=reverse
     )
     if sigma_elev is None:
         sigma_elev = hz_sigma_to_elev_sigma(
