@@ -9,7 +9,8 @@ from matplotlib.ticker import LogFormatterSciNotation, LogLocator
 from scipy.stats import pearsonr, spearmanr
 
 plt.rcParams["svg.fonttype"] = "none"
-plt.rcParams["font.family"] = "Helvetica"
+plt.rcParams['font.family'] = 'sans-serif'
+plt.rcParams['font.sans-serif'] = ['Helvetica']
 plt.rcParams["figure.dpi"] = 300
 
 DIR = os.getcwd()
@@ -86,13 +87,19 @@ sns.set_context("notebook")
 
 plot_name = input("Enter the name of the plot:")
 
+MODEL_LABELS = {"prob_bias": "World Bias", "flipped": "Flipped HRTF", "basic": "Basic"}
+MODEL_COLORS = {"Basic": "#1a80bb", "Flipped HRTF": "#8cc5e3", "World Bias": "#a00000"}
+per_sound["model_label"] = per_sound["model"].map(
+    lambda m: next((label for key, label in MODEL_LABELS.items() if key in m), m)
+)
+
 g = sns.lmplot(
     data=per_sound,
     x="centroid_khz",
     y="elevation_diff",
-    hue="model",
+    hue="model_label",
     scatter_kws={"s": 18, "alpha": 0.45},
-    palette='tab10',
+    palette=MODEL_COLORS,
     aspect=1,
     legend=False,
     ci=95

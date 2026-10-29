@@ -15,6 +15,7 @@ STIM_DIRS = [
     "tones/viola",
     "tones/harmoniccomplex",
     "tones/viola_complex",
+    "test_stimuli"
 ]
 
 sounds = []
@@ -55,6 +56,8 @@ df.to_csv(os.path.join(DIR, "acoustic_analysis", "spectral_centroid_stimuli.csv"
 # ------------------------------------------------------------
 # Plot the distribution of spectral centroid
 # ------------------------------------------------------------
+
+df = pd.read_csv(os.path.join(DIR, "acoustic_analysis", "spectral_centroid_stimuli.csv"))
 
 conditions = [os.path.basename(d) for d in STIM_DIRS]
 n_cond = len(conditions)
@@ -97,4 +100,18 @@ plt.savefig(
     dpi=300,
     bbox_inches="tight",
 )
+plt.show()
+
+# Compare the natural sounds with the test stimuli
+
+natural_sounds = df.loc[df["condition"] == "naturalsounds165"]
+test_stimuli = df.loc[df["condition"] == "test_stimuli"]
+
+print(f"Natural Sounds: {natural_sounds['centroid'].mean()}")
+print(f"Test Stimuli: {test_stimuli['centroid'].mean()}")
+
+plt.figure(figsize=(10, 5))
+plt.hist(natural_sounds["centroid"], bins=centroid_bins, color="steelblue", label="Natural Sounds", alpha=0.5)
+plt.hist(test_stimuli["centroid"], bins=centroid_bins, color="orange", label="Test Stimuli", alpha=0.5)
+plt.legend()
 plt.show()
