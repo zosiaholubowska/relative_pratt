@@ -444,6 +444,7 @@ for instrument in ["flute", "viola"]:
         groups="subject", re_formula="1 + log2c_c",
     ).fit(reml=True, method="powell")
     h_est, h_se = hum_fit.fe_params["log2c_c"], hum_fit.bse_fe["log2c_c"]
+    print(hum_fit.summary())
     print(f"Converged: human = {hum_fit.converged}")
 
     # Model slopes on the same 12 stimuli
@@ -452,6 +453,7 @@ for instrument in ["flute", "viola"]:
         groups="filename", re_formula="1",
         vc_formula={"sound_model": "0 + C(model)"},
     ).fit(reml=True, method="powell")
+    print(mod_fit.summary())
     print(f"Converged: models = {mod_fit.converged}")
     mod_names = [f"model[{m}]:log2c_c" for m in human_models]
     m_est = mod_fit.fe_params[mod_names].values
